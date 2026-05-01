@@ -4,7 +4,7 @@
 
 | Layer | Technology |
 |---|---|
-| Smart contract | Rust · Pinocchio |
+| Smart contract | Rust · Anchor framework |
 | Blockchain | Solana (devnet → mainnet-beta) |
 | On-chain security | Program-owned PDAs · whitelist PDAs · per-wallet operator nonce |
 | Backend | Node.js · JavaScript |
@@ -57,7 +57,7 @@ graph TD
 
 ---
 
-## Smart Contract (Pinocchio / Rust)
+## Smart Contract (Anchor / Rust)
 
 ### Accounts
 
