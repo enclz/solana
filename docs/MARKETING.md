@@ -151,7 +151,7 @@ One file per interview: date, persona type, framework used, current payment appr
 
 | | Enclz | Openfort | lobster.cash | Coinbase AgentKit | Raw Solana wallet |
 |---|---|---|---|---|---|
-| Enforcement layer | On-chain (Anchor) | On-chain (ERC-4337) | Backend | Backend | None |
+| Enforcement layer | On-chain (Pinocchio) | On-chain (ERC-4337) | Backend | Backend | None |
 | Private key exposure | Never (scoped API key) | Never (session keys) | Never | Depends | Full exposure |
 | Survives backend compromise | Yes | Yes | No | No | N/A |
 | Solana-native | Yes | EVM-first | Yes | Recently added | Yes |

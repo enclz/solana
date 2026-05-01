@@ -39,7 +39,7 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 
 | Product | On-chain enforcement | Solana-native | No SDK | Agent-first DX | Simulate |
 |---|---|---|---|---|---|
-| **Enclz** | ✓ Anchor | ✓ Native | ✓ REST + MCP | ✓ AGENT_SKILL.md + MCP | ✓ |
+| **Enclz** | ✓ Pinocchio | ✓ Native | ✓ REST + MCP | ✓ AGENT_SKILL.md + MCP | ✓ |
 | Openfort | ✓ ERC-4337/EIP-7702 | ~ EVM-first | ✗ SDK required | ~ Generic | ✗ |
 | lobster.cash (Crossmint) | ✗ Off-chain | ✓ + card rails | ✓ | ~ Card + USDC focus | ✗ |
 | Coinbase AgentKit | ✗ App layer | ~ Recently added | ✗ SDK required | ~ Generic | ✗ |
@@ -74,7 +74,7 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 | **Project Plutus** | Breakout 2025 | **2nd AI — $20k** | AI agent deployment + management platform | Platform play, not payment enforcement |
 | **AI Economy Protocol** | Cypherpunk 2025 | None | Autonomous agent marketplace with payments | Agent-to-agent marketplace, no policy layer |
 
-**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a dedicated Anchor program with whitelist PDAs + nonce + per-agent policy. Enclz's core mechanism is novel in this dataset.
+**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a dedicated Solana program (Pinocchio) with whitelist PDAs + nonce + per-agent policy. Enclz's core mechanism is novel in this dataset.
 
 ### Crowdedness
 
