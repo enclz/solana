@@ -1,8 +1,8 @@
-# Enclavez — Marketing & Personas (Agent Wallet Edition)
+# Enclz — Marketing & Personas (Agent Wallet Edition)
 
 ## Core Positioning
 
-**Enclavez gives AI agents a Solana wallet with on-chain spend enforcement.**
+**Enclz gives AI agents a Solana wallet with on-chain spend enforcement.**
 
 Not backend-enforced limits. Not a shared hot wallet. On-chain: the smart contract is the policy — no backend compromise can override it. Agent never sees a private key.
 
@@ -16,11 +16,11 @@ Solo developer or small team building a product where agents need to pay for thi
 
 **Pain**: Giving agents a private key means any misconfiguration, hallucination, or prompt injection can drain the wallet. Backend-enforced limits are only as secure as the backend. Key rotation requires redeployment.
 
-**Enclavez fit**: Agent gets a scoped API key — never the private key. On-chain limits mean a hallucinating agent can't exceed $1/tx regardless of what the backend does. External service addresses are whitelisted with a time-bound, amount-capped approval — once the budget is consumed the slot auto-voids on-chain, not in a backend. Simulate endpoint lets agents pre-check before committing. Policy templates get them running in under 5 minutes.
+**Enclz fit**: Agent gets a scoped API key — never the private key. On-chain limits mean a hallucinating agent can't exceed $1/tx regardless of what the backend does. External service addresses are whitelisted with a time-bound, amount-capped approval — once the budget is consumed the slot auto-voids on-chain, not in a backend. Simulate endpoint lets agents pre-check before committing. Policy templates get them running in under 5 minutes.
 
 **Why #1**: Largest cohort of potential users. Ship to their existing frameworks with zero SDK dependency — REST API + `AGENT_SKILL.md` is all they need. Pain is acute and immediate.
 
-**Unit math**: 1 developer, 10 agents, $10/day each = $100/day under management. Enclavez takes 10 bps = $0.10/day. Scale to 1,000 developers = $100/day protocol revenue. Revenue scales with agent activity, not seat count.
+**Unit math**: 1 developer, 10 agents, $10/day each = $100/day under management. Enclz takes 10 bps = $0.10/day. Scale to 1,000 developers = $100/day protocol revenue. Revenue scales with agent activity, not seat count.
 
 **Reach**: LangChain Discord, AutoGen GitHub discussions, CrewAI community, HackerNews Show HN, AI Twitter/X (#agenticAI, #LLMops). Cold pitch at agent hackathons and AI meetups.
 
@@ -34,7 +34,7 @@ Company building an agent orchestration platform where customers run their own a
 
 **Pain**: Managing one hot wallet per enterprise customer is operationally nightmarish. Per-customer key custody multiplies security surface area. Compliance needs per-customer audit trails.
 
-**Enclavez fit**: Orchestrator API enables programmatic group + agent provisioning. Each customer's agents are isolated in their own group with independent on-chain policies. Audit log per agent is natively structured (memo, task_id, timestamp).
+**Enclz fit**: Orchestrator API enables programmatic group + agent provisioning. Each customer's agents are isolated in their own group with independent on-chain policies. Audit log per agent is natively structured (memo, task_id, timestamp).
 
 **Why #2**: High-value accounts. Each platform customer brings many downstream agents.
 
@@ -50,7 +50,7 @@ Academic or independent researcher running multi-agent systems. Agents coordinat
 
 **Pain**: Research budgets are fixed. Runaway agent loops or infinite retry patterns can exhaust a wallet in minutes. Hard to audit which agent spent what and why.
 
-**Enclavez fit**: Hourly frequency cap blocks infinite loops on-chain. Per-task `task_id` field enables per-experiment cost accounting. Simulate endpoint lets researchers bound costs before running.
+**Enclz fit**: Hourly frequency cap blocks infinite loops on-chain. Per-task `task_id` field enables per-experiment cost accounting. Simulate endpoint lets researchers bound costs before running.
 
 **Why #3**: Research publications drive awareness in the developer community. Credibility multiplier. Revenue secondary.
 
@@ -64,7 +64,7 @@ Developer already building on Solana — DeFi bots, MEV agents, automated market
 
 **Pain**: Existing Solana wallet solutions give full key access. A bug in bot logic or a malicious dependency can drain the entire wallet in one transaction.
 
-**Enclavez fit**: Whitelist enforcement means the bot can only interact with pre-approved protocol addresses. Per-tx limit caps single-tx blast radius. Swap and deposit/withdraw flows already integrated with Jupiter and Kamino.
+**Enclz fit**: Whitelist enforcement means the bot can only interact with pre-approved protocol addresses. Per-tx limit caps single-tx blast radius. Swap and deposit/withdraw flows already integrated with Jupiter and Kamino.
 
 **Reach**: Superteam Discord, Solana Tech Discord #bots channel, @solana_devs Twitter, Anchor framework community.
 
@@ -72,7 +72,7 @@ Developer already building on Solana — DeFi bots, MEV agents, automated market
 
 ## Regulatory Note
 
-Enclavez is developer infrastructure, not a financial product. Orchestrators configure on-chain policies; Enclavez executes transfers on instruction. No custody of user funds, no money transmission. Frame as "programmable wallet policy enforcement," not "managed accounts."
+Enclz is developer infrastructure, not a financial product. Orchestrators configure on-chain policies; Enclz executes transfers on instruction. No custody of user funds, no money transmission. Frame as "programmable wallet policy enforcement," not "managed accounts."
 
 ---
 
@@ -82,7 +82,7 @@ Enclavez is developer infrastructure, not a financial product. Orchestrators con
 
 | Channel | Tactic |
 |---|---|
-| GitHub | Open-source `AGENT_SKILL.md`, `openapi.json`, and `@enclz/mcp-server`; agents that use Enclavez link back |
+| GitHub | Open-source `AGENT_SKILL.md`, `openapi.json`, and `@enclz/mcp-server`; agents that use Enclz link back |
 | MCP ecosystem | List in MCP server directories; Claude Desktop + Cursor users discover via `npx @enclz/mcp-server` |
 | LangChain / AutoGen community | Tutorial: "Give your LangChain agent a Solana wallet in 10 minutes" |
 | HackerNews Show HN | Demo: agent that pays for its own API calls with on-chain spend enforcement |
@@ -149,7 +149,7 @@ One file per interview: date, persona type, framework used, current payment appr
 
 ## Competitive Differentiation
 
-| | Enclavez | Openfort | lobster.cash | Coinbase AgentKit | Raw Solana wallet |
+| | Enclz | Openfort | lobster.cash | Coinbase AgentKit | Raw Solana wallet |
 |---|---|---|---|---|---|
 | Enforcement layer | On-chain (Anchor) | On-chain (ERC-4337) | Backend | Backend | None |
 | Private key exposure | Never (scoped API key) | Never (session keys) | Never | Depends | Full exposure |
@@ -165,5 +165,5 @@ One file per interview: date, persona type, framework used, current payment appr
 
 **Lead with**: enforcement survives backend compromise AND no SDK required AND TTL + amount-capped whitelist that auto-voids on-chain. Openfort can match the backend-compromise claim but requires an SDK, is EVM-first, and has no per-address amount ceiling or auto-void mechanic. No competitor ships a simulation endpoint, MCP server, or on-chain amount-exhaustion enforcement.
 
-**Against Openfort specifically**: Solana-native architecture, zero-SDK REST + MCP integration, AGENT_SKILL.md for LLM context injection, and simulation endpoint. Openfort is multi-chain generalist; Enclavez is Solana-specialist with agent-first DX.
+**Against Openfort specifically**: Solana-native architecture, zero-SDK REST + MCP integration, AGENT_SKILL.md for LLM context injection, and simulation endpoint. Openfort is multi-chain generalist; Enclz is Solana-specialist with agent-first DX.
 

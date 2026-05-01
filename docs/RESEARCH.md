@@ -1,4 +1,4 @@
-# Enclavez — Research
+# Enclz — Research
 
 > Session: April 23, 2026. Sources: web search, Colosseum Copilot (5,400+ hackathon projects).
 
@@ -39,14 +39,14 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 
 | Product | On-chain enforcement | Solana-native | No SDK | Agent-first DX | Simulate |
 |---|---|---|---|---|---|
-| **Enclavez** | ✓ Anchor | ✓ Native | ✓ REST + MCP | ✓ AGENT_SKILL.md + MCP | ✓ |
+| **Enclz** | ✓ Anchor | ✓ Native | ✓ REST + MCP | ✓ AGENT_SKILL.md + MCP | ✓ |
 | Openfort | ✓ ERC-4337/EIP-7702 | ~ EVM-first | ✗ SDK required | ~ Generic | ✗ |
 | lobster.cash (Crossmint) | ✗ Off-chain | ✓ + card rails | ✓ | ~ Card + USDC focus | ✗ |
 | Coinbase AgentKit | ✗ App layer | ~ Recently added | ✗ SDK required | ~ Generic | ✗ |
 | Privy Server Wallets | ✗ Off-chain | ~ Multi-chain | ✗ SDK required | ~ Generic | ✗ |
 | Trust Wallet Agent Kit | ✗ Unknown | ~ Multi-chain | ✗ SDK required | ✗ | ✗ |
 
-**Primary threat: Openfort.** They have on-chain enforcement and claim Solana support, but are EVM-first (ERC-4337/EIP-7702), require an SDK, and have no agent-specific DX. Enclavez must own: Solana-native + no-SDK + AGENT_SKILL.md context injection + MCP server + simulation endpoint.
+**Primary threat: Openfort.** They have on-chain enforcement and claim Solana support, but are EVM-first (ERC-4337/EIP-7702), require an SDK, and have no agent-specific DX. Enclz must own: Solana-native + no-SDK + AGENT_SKILL.md context injection + MCP server + simulation endpoint.
 
 ### Notes on Key Competitors
 
@@ -64,7 +64,7 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 
 ### Most Similar Projects
 
-| Project | Hackathon | Prize | Core approach | Gap vs Enclavez |
+| Project | Hackathon | Prize | Core approach | Gap vs Enclz |
 |---|---|---|---|---|
 | **Latinum Agentic Commerce** | Breakout 2025 | **1st AI — $25k** | MCP-compatible wallet, agents pay for services | No whitelist/spend limits, no on-chain enforcement |
 | **Agent-Cred** | Cypherpunk 2025 | None | AI agent payment infra, hotkey/coldkey arch | No on-chain enforcement, SDK required |
@@ -74,11 +74,11 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 | **Project Plutus** | Breakout 2025 | **2nd AI — $20k** | AI agent deployment + management platform | Platform play, not payment enforcement |
 | **AI Economy Protocol** | Cypherpunk 2025 | None | Autonomous agent marketplace with payments | Agent-to-agent marketplace, no policy layer |
 
-**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a dedicated Anchor program with whitelist PDAs + nonce + per-agent policy. Enclavez's core mechanism is novel in this dataset.
+**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a dedicated Anchor program with whitelist PDAs + nonce + per-agent policy. Enclz's core mechanism is novel in this dataset.
 
 ### Crowdedness
 
-"Solana AI Agent Infrastructure" cluster: **325** (very crowded). But search similarity scores for Enclavez's specific angle (on-chain policy enforcement) are low (0.03–0.05) — the niche is open within a crowded category.
+"Solana AI Agent Infrastructure" cluster: **325** (very crowded). But search similarity scores for Enclz's specific angle (on-chain policy enforcement) are low (0.03–0.05) — the niche is open within a crowded category.
 
 ### Winner Gap Analysis
 
@@ -92,11 +92,11 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 - Smart contract escrow (−1.0), on-chain verification as a feature (−1.0)
 - High platform fees / high barrier to entry as problem framing (−1.0)
 
-**Enclavez alignment:** Good. Solves a real financial/security problem, targets developers, on-chain enforcement as primitive. Not consumer-facing.
+**Enclz alignment:** Good. Solves a real financial/security problem, targets developers, on-chain enforcement as primitive. Not consumer-facing.
 
 ### Strategic Insight from Hackathon Data
 
-**Latinum won 1st place AI at Breakout with MCP-compatible wallet.** The winning pattern: meet agents where they run (MCP runtimes), minimize integration friction. Enclavez's `AGENT_SKILL.md` + `openapi.json` + MCP server covers all three distribution channels simultaneously. This directly mirrors the approach that won.
+**Latinum won 1st place AI at Breakout with MCP-compatible wallet.** The winning pattern: meet agents where they run (MCP runtimes), minimize integration friction. Enclz's `AGENT_SKILL.md` + `openapi.json` + MCP server covers all three distribution channels simultaneously. This directly mirrors the approach that won.
 
 ---
 

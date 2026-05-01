@@ -1,4 +1,4 @@
-# Enclavez — Technical Specification (Agent Wallet Edition)
+# Enclz — Technical Specification (Agent Wallet Edition)
 
 ## Tech Stack
 
@@ -36,7 +36,7 @@ graph TD
     RPC["Solana RPC (QuickNode)"]
     JUP["Jupiter API"]
 
-    CHAIN["🔗 Solana on-chain\nEnclavez Program\nGroupConfig PDA · AgentWallet PDAs · WhitelistEntry PDAs"]
+    CHAIN["🔗 Solana on-chain\nEnclz Program\nGroupConfig PDA · AgentWallet PDAs · WhitelistEntry PDAs"]
 
     ORC -->|HTTPS| WEB
     ORC -->|Orchestrator API key| OAPI
@@ -67,7 +67,7 @@ Seed: `["group", owner_pubkey]`
 ```
 owner:                Pubkey    // Orchestrator's Solana wallet (policy admin)
 backend_operator:     Pubkey    // backend's signing keypair (authorized caller)
-protocol_fee_wallet:  Pubkey    // Enclavez protocol ATA receives fees
+protocol_fee_wallet:  Pubkey    // Enclz protocol ATA receives fees
 agent_count:          u8
 ```
 
@@ -127,7 +127,7 @@ Accounts:
 
 Args:
   backend_operator:     Pubkey
-  protocol_fee_wallet:  Pubkey   // Enclavez's fee collection wallet
+  protocol_fee_wallet:  Pubkey   // Enclz's fee collection wallet
 ```
 
 #### `add_agent`
@@ -158,7 +158,7 @@ Accounts:
   from_token_account     [writable]   // agent vault ATA
   to_token_account       [writable]   // recipient ATA (must exist)
   whitelist_entry        []           // PDA must exist for recipient address
-  protocol_fee_token_acct [writable]  // Enclavez protocol ATA
+  protocol_fee_token_acct [writable]  // Enclz protocol ATA
   token_program          []
   system_program
 
@@ -873,7 +873,7 @@ Register callback URL for async transaction confirmations and policy events for 
 
 ### Webhook Event Payloads
 
-All webhook requests are signed with `X-Enclavez-Signature: sha256=<hmac>`.
+All webhook requests are signed with `X-Enclz-Signature: sha256=<hmac>`.
 
 ```js
 // transfer.confirmed
@@ -1018,7 +1018,7 @@ Location: `docs2/AGENT_SKILL.md`
 
 ### MCP Server
 
-TypeScript package publishing Enclavez operations as native MCP tools. Installed once; any MCP-enabled runtime discovers tools automatically.
+TypeScript package publishing Enclz operations as native MCP tools. Installed once; any MCP-enabled runtime discovers tools automatically.
 
 **Package:** `@enclz/mcp-server`  
 **Transport:** stdio (standard MCP)  
