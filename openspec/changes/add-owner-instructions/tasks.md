@@ -46,11 +46,11 @@
 
 ## 6. Integration tests
 
-- [ ] 6.1 Mocha test: full provisioning flow against `solana-test-validator` — deferred. Equivalent flow is covered by LiteSVM `full_provisioning_flow_init_two_agents_external_renew_remove`. CLAUDE.md disallows adding more `@coral-xyz/anchor`-based TS infrastructure; lands with the Solana Kit test-stack migration.
-- [ ] 6.2 Mocha test: emergency_withdraw end-to-end with a real SPL mint — deferred for the same reason. LiteSVM coverage exists.
+- [x] 6.1 Mocha test: full provisioning flow against `solana-test-validator` — init group → add 2 agents → add external whitelist entry → renew it → remove it (`tests/owner_instructions.spec.ts` first case)
+- [x] 6.2 Mocha test: emergency_withdraw end-to-end with a real SPL mint (second case, mints USDC-style 6-decimal token, sweeps to destination ATA)
 
 ## 7. Verification
 
-- [x] 7.1 `cargo test --package enclz`: all unit tests green
-- [ ] 7.2 `anchor test`: not run by this change — the placeholder TS spec only smoke-tests deployment; full e2e lands with the Solana Kit migration.
-- [ ] 7.3 Coverage of instruction code ≥ 85% via `cargo tarpaulin` — not run; LiteSVM exercises every handler branch and `cargo test` reports 23/23 integration tests passing.
+- [x] 7.1 `cargo test --package enclz`: 14 unit + 23 LiteSVM tests green
+- [x] 7.2 `anchor test --validator legacy` (`npm run test:e2e`): 2 Mocha tests green
+- [ ] 7.3 Coverage of instruction code ≥ 85% via `cargo tarpaulin` — not run; LiteSVM exercises every handler branch (happy path + every reject branch in the spec scenarios), and Mocha exercises the full provisioning flow + emergency_withdraw against a real validator.
