@@ -2,18 +2,116 @@ use anchor_lang::prelude::*;
 
 pub mod constants;
 pub mod errors;
+pub mod instructions;
 pub mod state;
 
 pub use constants::*;
 pub use errors::*;
+pub use instructions::*;
 pub use state::*;
 
 declare_id!("67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj");
 
 #[program]
 pub mod enclz {
-    #[allow(unused_imports)]
     use super::*;
+
+    pub fn initialize_group(
+        context: Context<InitializeGroupAccountConstraints>,
+        backend_operator: Pubkey,
+        protocol_fee_wallet: Pubkey,
+        dex_router: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_group::handle_initialize_group(
+            context,
+            backend_operator,
+            protocol_fee_wallet,
+            dex_router,
+        )
+    }
+
+    pub fn add_agent(
+        context: Context<AddAgentAccountConstraints>,
+        display_name: [u8; 32],
+        daily_limit: Option<u64>,
+        per_tx_limit: Option<u64>,
+        hourly_tx_cap: Option<u8>,
+    ) -> Result<()> {
+        instructions::add_agent::handle_add_agent(
+            context,
+            display_name,
+            daily_limit,
+            per_tx_limit,
+            hourly_tx_cap,
+        )
+    }
+
+    pub fn update_agent_limits(
+        context: Context<UpdateAgentLimitsAccountConstraints>,
+        daily_limit: Option<u64>,
+        per_tx_limit: Option<u64>,
+        hourly_tx_cap: Option<u8>,
+    ) -> Result<()> {
+        instructions::update_agent_limits::handle_update_agent_limits(
+            context,
+            daily_limit,
+            per_tx_limit,
+            hourly_tx_cap,
+        )
+    }
+
+    pub fn update_backend_operator(
+        context: Context<UpdateBackendOperatorAccountConstraints>,
+        new_operator: Pubkey,
+    ) -> Result<()> {
+        instructions::update_backend_operator::handle_update_backend_operator(context, new_operator)
+    }
+
+    pub fn emergency_withdraw(
+        context: Context<EmergencyWithdrawAccountConstraints>,
+        agent_index: u8,
+    ) -> Result<()> {
+        instructions::emergency_withdraw::handle_emergency_withdraw(context, agent_index)
+    }
+
+    pub fn add_to_whitelist(
+        context: Context<AddToWhitelistAccountConstraints>,
+        target_address: Pubkey,
+        label: [u8; 32],
+        entry_type_arg: u8,
+        ttl_expires_at: i64,
+        approved_amount: u64,
+    ) -> Result<()> {
+        instructions::add_to_whitelist::handle_add_to_whitelist(
+            context,
+            target_address,
+            label,
+            entry_type_arg,
+            ttl_expires_at,
+            approved_amount,
+        )
+    }
+
+    pub fn renew_whitelist_entry(
+        context: Context<RenewWhitelistEntryAccountConstraints>,
+        target_address: Pubkey,
+        ttl_expires_at: i64,
+        approved_amount: u64,
+    ) -> Result<()> {
+        instructions::renew_whitelist_entry::handle_renew_whitelist_entry(
+            context,
+            target_address,
+            ttl_expires_at,
+            approved_amount,
+        )
+    }
+
+    pub fn remove_from_whitelist(
+        context: Context<RemoveFromWhitelistAccountConstraints>,
+        target_address: Pubkey,
+    ) -> Result<()> {
+        instructions::remove_from_whitelist::handle_remove_from_whitelist(context, target_address)
+    }
 }
 
 #[cfg(test)]
