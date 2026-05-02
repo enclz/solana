@@ -4,6 +4,7 @@ node_modules/
 test-ledger/
 .env
 .env.local
+.solana/keys/*.json
 *.log
 .DS_Store
 dist/

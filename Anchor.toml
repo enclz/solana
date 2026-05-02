@@ -26,11 +26,11 @@ wallet = "~/.config/solana/id.json"
 
 [provider.devnet]
 cluster = "${QUICKNODE_DEVNET_RPC_URL}"
-wallet = "~/.config/solana/id.json"
+wallet = "./.solana/keys/devnet-deployer.json"
 
 [provider.mainnet]
 cluster = "${MAINNET_RPC_URL}"
-wallet = "~/.config/solana/id.json"
+wallet = "./.solana/keys/mainnet-deployer.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.spec.ts"
