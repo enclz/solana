@@ -469,6 +469,34 @@ fn add_to_whitelist_protocol_forces_zero_ttl_and_amount() {
 }
 
 #[test]
+fn add_to_whitelist_rejects_non_owner_signer() {
+    let mut context = TestContext::new();
+    let (backend_operator, protocol_fee_wallet, dex_router) = unique_keys();
+    let group_pda =
+        provision_group_with_router(&mut context, backend_operator, protocol_fee_wallet, dex_router);
+
+    let now = context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let attacker = Keypair::new();
+    context.airdrop(&attacker.pubkey(), STARTING_LAMPORTS);
+
+    let target = Pubkey::new_unique();
+    let (entry_pda, _) = context.whitelist_pda(&group_pda, &target);
+    let instruction = add_to_whitelist_instruction(
+        &context.program_id,
+        &attacker.pubkey(),
+        &group_pda,
+        &entry_pda,
+        target,
+        MERCHANT_LABEL,
+        entry_type::EXTERNAL,
+        now + 86_400,
+        50_000_000,
+    );
+    let result = context.send_signed(instruction, &[&attacker]);
+    assert!(result.is_err(), "non-owner add_to_whitelist must fail");
+}
+
+#[test]
 fn add_to_whitelist_rejects_intra_group_type() {
     let mut context = TestContext::new();
     let (backend_operator, protocol_fee_wallet, dex_router) = unique_keys();

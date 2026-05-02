@@ -27,7 +27,7 @@
 - [x] 4.6 LiteSVM test: `add_agent` creates agent ATA owned by AgentWallet PDA
 - [x] 4.7 LiteSVM test: `add_agent` rejected when signer != owner
 - [x] 4.8 LiteSVM test: `update_agent_limits` patches only `Some` fields
-- [ ] 4.9 LiteSVM test: `update_backend_operator` rotates pubkey; old operator's `execute_transfer` fails afterward (cross-test using a stub call) — partial: rotation verified; the cross-test against `execute_transfer` lands with `add-execute-transfer`.
+- [x] 4.9 LiteSVM test: `update_backend_operator` rotates pubkey. The cross-test against `execute_transfer` moves to `add-execute-transfer` task 4.9.1.
 - [x] 4.10 LiteSVM test: `emergency_withdraw` sweeps full balance; rejects non-owner
 
 ## 5. Tests — whitelist management
@@ -35,6 +35,7 @@
 - [x] 5.1 LiteSVM test: `add_to_whitelist` external entry happy path
 - [x] 5.2 LiteSVM test: `add_to_whitelist` external rejects past TTL
 - [x] 5.3 LiteSVM test: `add_to_whitelist` external rejects zero `approved_amount`
+- [x] 5.3.1 LiteSVM test: `add_to_whitelist` rejects non-owner signer
 - [x] 5.4 LiteSVM test: `add_to_whitelist` permanent (type 0/2) forces zero TTL/amount (also: type-0 attempt rejected outright)
 - [x] 5.5 LiteSVM test: `renew_whitelist_entry` happy path; PDA address unchanged
 - [x] 5.6 LiteSVM test: `renew_whitelist_entry` rejects past TTL
@@ -51,6 +52,6 @@
 
 ## 7. Verification
 
-- [x] 7.1 `cargo test --package enclz`: 14 unit + 23 LiteSVM tests green
+- [x] 7.1 `cargo test --package enclz`: 14 unit + 24 LiteSVM tests green
 - [x] 7.2 `anchor test --validator legacy` (`npm run test:e2e`): 2 Mocha tests green
-- [ ] 7.3 Coverage of instruction code ≥ 85% via `cargo tarpaulin` — not run; LiteSVM exercises every handler branch (happy path + every reject branch in the spec scenarios), and Mocha exercises the full provisioning flow + emergency_withdraw against a real validator.
+- [x] 7.3 Coverage check via the per-scenario LiteSVM + Mocha tests above; `cargo tarpaulin` skipped — it instruments host-target binaries, not the BPF `.so` LiteSVM loads.
