@@ -14,7 +14,6 @@
 | MCP Server | TypeScript · `@modelcontextprotocol/sdk` · stdio transport |
 | DEX aggregator | Jupiter API v6 |
 | RPC provider | QuickNode |
-| Testing | Vitest |
 
 ---
 
@@ -85,6 +84,7 @@ tx_count_this_hour:  u8        // resets on the hour
 last_spend_reset:    i64
 last_hour_reset:     i64
 operator_nonce:      u64       // incremented per execute_transfer — replay protection
+bump:                u8        // canonical PDA bump cached to skip re-derivation
 ```
 
 **Default limits at initialization:**
@@ -104,6 +104,7 @@ entry_type:       u8        // 0 = intra-group agent (permanent), 1 = external r
 ttl_expires_at:   i64       // Unix timestamp; 0 = no expiry (used for entry_type 0 and 2)
 approved_amount:  u64       // USDC 6-decimal; 0 = unlimited (used for entry_type 0 and 2)
 amount_used:      u64       // cumulative amount transferred to this address; incremented on every execute_transfer
+bump:             u8        // canonical PDA bump cached to skip re-derivation
 ```
 
 Existence = whitelisted. Close account = removed.
@@ -977,6 +978,7 @@ HTTP status codes: `400` bad request, `401` unauthorized, `403` policy violation
 | `invalid_invitation_code` | 400 | Code expired, used, or not found |
 | `invalid_amount` | 400 | Amount ≤ 0 or non-numeric |
 | `invalid_address` | 400 | Not a valid base58 Solana address |
+| `invalid_ttl` | 400 | Whitelist `ttl_expires_at` is not in the future |
 | `unauthorized` | 401 | Missing or invalid API key |
 | `revoked_credential` | 401 | API key has been revoked |
 | `whitelist_violation` | 403 | Recipient address not in whitelist |
@@ -990,6 +992,7 @@ HTTP status codes: `400` bad request, `401` unauthorized, `403` policy violation
 | `insufficient_balance` | 403 | Agent wallet has insufficient token balance |
 | `idempotency_conflict` | 409 | Same idempotency key used with different parameters |
 | `submission_failed` | 503 | Transient RPC or network failure; retry with same idempotency key |
+| `nonce_mismatch` | 500 | Backend operator nonce out of sync with on-chain state — backend resyncs and retries internally |
 | `internal_error` | 500 | Unexpected backend or chain error |
 
 ---
@@ -1132,166 +1135,3 @@ Token mints (mainnet):
 ### Solana RPC
 Provider: **QuickNode**
 Calls: `sendTransaction`, `getAccountInfo`, `getTokenAccountBalance`, `getSignaturesForAddress`, `onAccountChange` (websocket)
-
----
-
-## Testing
-
-Framework: **Vitest**
-
-### Backend
-
-#### Policy Enforcer — unit tests (high priority)
-
-```
-  ✓ amount within per_tx_limit and daily headroom  → allowed
-  ✗ amount > per_tx_limit                          → PolicyError('per_tx_limit_exceeded')
-  ✗ spent_today + amount > daily_limit             → PolicyError('daily_limit_exceeded')
-  ✗ tx_count_this_hour >= hourly_tx_cap            → PolicyError('hourly_cap_exceeded')
-  ✗ recipient not in whitelist                     → PolicyError('whitelist_violation')
-  ✓ daily reset: spent_today zeroed after midnight → allowed again
-  ✓ hourly reset: tx_count zeroed after 1h         → allowed again
-
-  Whitelist TTL + amount enforcement (entry_type 1):
-  ✓ within TTL, amount_used + transfer < approved_amount  → allowed; amount_used incremented
-  ✗ now > ttl_expires_at                                  → PolicyError('whitelist_expired')
-  ✗ amount_used + transfer > approved_amount              → PolicyError('whitelist_amount_exhausted')
-  ✓ amount_used + transfer == approved_amount             → allowed; whitelist entry auto-voided after transfer
-  ✓ intra-group entry (entry_type 0): TTL/amount checks skipped → always allowed (within spend limits)
-  ✓ protocol entry (entry_type 2): TTL/amount checks skipped → always allowed (within spend limits)
-```
-
-#### Protocol Fee Computation — unit tests (high priority)
-
-```
-  ✓ 10 bps fee: net_amount = amount * 0.999, protocol_fee = amount * 0.001
-  ✓ fee counted against daily limit (spent_today += amount, not net_amount)
-  ✓ per_tx_limit checked against gross amount
-  ✓ fee response fields present in transfer and swap responses
-```
-
-#### Simulation Endpoint — unit tests (high priority)
-
-```
-  ✓ valid transfer within limits to whitelisted address → would_succeed: true
-  ✗ recipient not whitelisted                          → would_succeed: false, reason: whitelist_violation
-  ✗ amount > per_tx_limit                              → would_succeed: false, reason: per_tx_limit_exceeded
-  ✗ daily headroom insufficient                        → would_succeed: false, reason: daily_limit_exceeded
-  ✓ no transaction submitted in any case               → no on-chain state change
-```
-
-#### Idempotency — unit tests (high priority)
-
-```
-  ✓ same idempotency_key + same params on second call → returns cached response, no re-execution
-  ✗ same idempotency_key + different params           → 409 idempotency_conflict
-  ✓ different idempotency_key                         → executes normally
-  ✓ no idempotency_key                                → executes normally
-```
-
-#### Agent Auth — unit tests (high priority)
-
-```
-auth middleware
-  ✓ valid API key → resolves to agent_id
-  ✗ revoked API key → 401 revoked_credential
-  ✗ unknown API key → 401 unauthorized
-  ✗ missing Authorization header → 401 unauthorized
-
-POST /v1/register
-  ✓ valid unused code within expiry → returns api_key once, marks code used
-  ✗ already-used code → 400 invalid_invitation_code
-  ✗ expired code → 400 invalid_invitation_code
-  ✗ unknown code → 400 invalid_invitation_code
-```
-
-#### Nonce Enforcement — unit tests (high priority)
-
-```
-  ✓ execute with correct nonce     → succeeds, nonce incremented
-  ✗ execute with stale nonce       → rejected before chain call
-  ✓ nonce persisted across restarts (loaded from on-chain state)
-```
-
-#### Webhook Dispatcher — unit tests (medium priority)
-
-```
-  ✓ transfer.confirmed fires after successful transfer
-  ✓ policy.limit_threshold fires when spent_today >= 0.8 * daily_limit
-  ✓ policy.whitelist_violation fires on rejected transfer
-  ✓ payload signed with HMAC-SHA256 using registered secret
-  ✓ agent with no webhook registered: no dispatch, no error
-```
-
-#### Orchestrator Endpoints — unit tests (medium priority)
-
-```
-POST /v1/orchestrator/groups
-  ✓ valid request → group created on-chain + in registry, orchestrator_api_key returned once
-
-POST /v1/orchestrator/groups/:id/agents
-  ✓ template applied → correct default limits set
-  ✓ override fields replace template defaults
-  ✓ invitation_code returned once, expires 24h
-  ✓ intra-group whitelist entry (entry_type 0) created for new agent PDA automatically
-  ✗ invalid group_id → 404
-
-POST /v1/orchestrator/groups/:id/whitelist
-  ✓ entry_type "external" with ttl_seconds + approved_amount → whitelist entry created
-  ✗ entry_type "external" missing ttl_seconds → 400
-  ✗ entry_type "external" missing approved_amount → 400
-  ✓ entry_type "protocol" → permanent entry, no TTL/amount stored
-
-PATCH /v1/orchestrator/groups/:id/whitelist/:address
-  ✓ valid ttl_seconds → ttl_expires_at updated
-  ✓ valid approved_amount >= amount_used → approved_amount updated
-  ✗ approved_amount < current amount_used → 400 (can't lower cap below consumed amount)
-  ✗ address is entry_type 0 (intra-group) → 403 (cannot modify permanent entries)
-
-POST /v1/orchestrator/agents/:id/revoke
-  ✓ API key marked revoked → subsequent agent requests return 401
-```
-
-#### Deposit / Withdraw Pipeline — unit tests (medium priority)
-
-```
-  ✓ deposit intent, one whitelisted protocol      → routes to that protocol
-  ✓ deposit intent, protocol label specified      → routes to matching whitelist entry
-  ✗ deposit intent, no whitelisted protocol       → 403 no_whitelisted_protocol
-  ✓ withdraw intent, one whitelisted protocol     → routes to that protocol
-  ✗ withdraw amount > deposited balance           → 403 insufficient_deposit_balance
-```
-
-### MCP Server
-
-#### Tool registration — unit tests (medium priority)
-
-```
-  ✓ server exposes exactly 8 tools with correct names
-  ✓ each tool input schema matches corresponding REST request shape
-  ✓ missing ENCLZ_API_KEY → server exits with clear error on startup
-```
-
-#### Tool execution — unit tests (medium priority)
-
-```
-enclz_transfer
-  ✓ valid call → delegates to POST /v1/transfer, returns response + summary
-  ✗ REST returns 403 → tool returns error content block with error_code
-
-enclz_simulate
-  ✓ would_succeed: true  → summary includes "would succeed"
-  ✓ would_succeed: false → summary includes failure reason
-
-enclz_balance
-  ✓ returns balances + daily_remaining + hourly_tx_remaining in tool output
-
-all tools
-  ✓ ENCLZ_API_URL override respected — requests go to configured base URL
-  ✓ network error from backend → tool returns structured error, server does not crash
-```
-
-### Web App
-
-#### Routing — unit tests (low priority)
-Verify each route renders the correct page component.
