@@ -289,5 +289,6 @@ mod tests {
         assert_eq!(EnclzError::Unauthorized as u32, 7);
         assert_eq!(EnclzError::InvalidAmount as u32, 8);
         assert_eq!(EnclzError::InvalidTtl as u32, 9);
+        assert_eq!(EnclzError::TooManyAgents as u32, 10);
     }
 }

@@ -5,6 +5,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::constants::{
     DEFAULT_DAILY_LIMIT, DEFAULT_HOURLY_CAP, DEFAULT_PER_TX_LIMIT, WALLET_SEED, WHITELIST_SEED,
 };
+use crate::errors::EnclzError;
 use crate::state::whitelist_entry::entry_type;
 use crate::state::{AgentWallet, GroupConfig, WhitelistEntry};
 
@@ -87,6 +88,6 @@ pub fn handle_add_agent(
     group_config.agent_count = group_config
         .agent_count
         .checked_add(1)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(EnclzError::TooManyAgents)?;
     Ok(())
 }
