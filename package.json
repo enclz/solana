@@ -6,6 +6,7 @@
     "lint:fix": "prettier */*.ts \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.ts \"*/**/*{.js,.ts}\" --check",
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.spec.ts",
+    "test:e2e": "anchor test --validator legacy",
     "deploy:devnet": "dotenv -- anchor deploy --provider.cluster devnet",
     "deploy:mainnet": "dotenv -- anchor deploy --provider.cluster mainnet"
   },

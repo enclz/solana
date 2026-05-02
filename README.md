@@ -67,7 +67,7 @@ solana-keygen pubkey .solana/keys/devnet-deployer.json
 
 ```bash
 cargo test --package enclz   # Rust unit tests — PDA derivation, INIT_SPACE, errors, constants
-anchor test                  # mocha integration tests against solana-test-validator
+npm run test:e2e             # mocha integration tests against solana-test-validator (wraps `anchor test --validator legacy` because Anchor 1.0 defaults to surfpool)
 ```
 
 ## Deploy
