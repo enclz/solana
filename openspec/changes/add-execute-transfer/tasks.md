@@ -39,6 +39,7 @@
 - [ ] 4.7 LiteSVM: type-1 entry past TTL → `WhitelistExpired`
 - [ ] 4.8 LiteSVM: type-1 entry over cap → `WhitelistAmountExhausted`
 - [ ] 4.9 LiteSVM: non-operator signer → `Unauthorized`
+- [ ] 4.9.1 LiteSVM: after `update_backend_operator`, the previously-valid operator's `execute_transfer` fails with `Unauthorized` (handed off from `add-owner-instructions` task 4.9 — rotation itself is verified there; this asserts the rotation actually invalidates the old key)
 - [ ] 4.10 LiteSVM: arithmetic overflow → `InvalidAmount`
 - [ ] 4.11 LiteSVM: `from_token_account.owner != agent_wallet` → constraint rejection
 - [ ] 4.12 LiteSVM: non-USDC mint on `from_token_account` → constraint rejection
