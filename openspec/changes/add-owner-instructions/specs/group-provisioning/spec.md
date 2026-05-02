@@ -50,7 +50,7 @@ The program SHALL expose `update_backend_operator(new_operator: Pubkey)` callabl
 
 ### Requirement: emergency_withdraw instruction
 
-The program SHALL expose `emergency_withdraw(destination: Pubkey)` callable only by the group owner. It bypasses spend limits and operator nonce, transferring the full agent ATA balance via SPL token CPI to the destination ATA.
+The program SHALL expose `emergency_withdraw(agent_index: u8)` callable only by the group owner. The destination ATA is supplied as an account in the instruction's account list (not as an instruction argument) so the SPL token CPI can transfer into it directly. The handler bypasses spend limits and operator nonce, transferring the full agent ATA balance via SPL token CPI to the destination ATA.
 
 #### Scenario: Sweep all funds
 - **WHEN** owner calls `emergency_withdraw` against an agent ATA holding any positive balance

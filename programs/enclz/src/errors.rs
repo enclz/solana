@@ -22,4 +22,6 @@ pub enum EnclzError {
     InvalidAmount,
     #[msg("TTL must be in the future")]
     InvalidTtl,
+    #[msg("Group has reached its maximum agent count")]
+    TooManyAgents,
 }
