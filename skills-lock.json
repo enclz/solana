@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "solana-anchor-claude-skill": {
+      "source": "quiknode-labs/solana-anchor-claude-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "90557d194221d17d40d5b5b2c83e0a4341dc0272cce251022be06aa5134d39c3"
+    }
+  }
+}
