@@ -33,4 +33,4 @@ cluster = "${MAINNET_RPC_URL}"
 wallet = "./.solana/keys/mainnet-deployer.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.spec.ts"
+test = "npm test"
