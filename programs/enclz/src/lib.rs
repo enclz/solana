@@ -8,7 +8,7 @@ pub use constants::*;
 pub use errors::*;
 pub use state::*;
 
-declare_id!("Enc1zProgram11111111111111111111111111111111");
+declare_id!("67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj");
 
 #[program]
 pub mod enclz {

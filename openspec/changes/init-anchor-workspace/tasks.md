@@ -7,7 +7,7 @@
 - [x] 1.5 Add `.gitignore` entries for `target/`, `.anchor/`, `node_modules/`, `test-ledger/`, `.env`
 - [x] 1.6 Add `package.json` with dev deps: `@coral-xyz/anchor`, `mocha`, `chai`, `ts-node`, `@types/mocha`, `@types/chai`, `typescript`
 - [x] 1.7 Add Rust dev deps in `programs/enclz/Cargo.toml`: `litesvm`, `litesvm-token`
-- [ ] 1.8 Verify `anchor build` succeeds on clean checkout
+- [x] 1.8 Verify `anchor build` succeeds on clean checkout (Anchor 1.0.1, anchor-spl 1.0.1, real program ID `67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj` synced into `lib.rs` + `Anchor.toml`)
 
 ## 2. Constants + errors
 
@@ -30,11 +30,11 @@
 - [x] 4.3 Write Rust unit test asserting all required `EnclzError` variants exist + each has stable error code number
 - [x] 4.4 Write Rust unit test asserting constants match spec values
 - [x] 4.5 Add placeholder `tests/enclz.spec.ts` mocha file that loads the program and asserts it deploys to `solana-test-validator`
-- [ ] 4.6 Run `cargo test` + `anchor test` — `cargo test` green (14/14); `anchor test` deferred (requires `anchor` CLI on host)
+- [x] 4.6 Run `cargo test` + `anchor test` — `cargo test` green (14/14); `anchor test --validator legacy` green (2/2 mocha tests). Anchor 1.0 defaults to surfpool; `npm run test:e2e` wraps the legacy flag.
 
 ## 5. Verification
 
-- [ ] 5.1 `anchor build` from clean checkout: deferred (requires `anchor` CLI on host); `cargo check --package enclz` green
-- [x] 5.2 `cargo test --package enclz`: all unit tests pass
-- [ ] 5.3 `anchor test` (against local validator): deferred (requires `anchor` CLI on host)
+- [x] 5.1 `anchor build` from clean checkout: green — produces `target/deploy/enclz.so`, `target/deploy/enclz-keypair.json`, `target/idl/enclz.json`
+- [x] 5.2 `cargo test --package enclz`: all 14 unit tests pass
+- [x] 5.3 `anchor test` (against local validator): green via `npm run test:e2e` (= `anchor test --validator legacy`); 2 mocha tests pass
 - [x] 5.4 `git status` after build: no `target/` or `.anchor/` artifacts tracked

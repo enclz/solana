@@ -21,7 +21,10 @@ cargo test --package enclz tests::group_config_pda_matches_documented_seeds
 anchor build
 
 # Mocha integration tests against solana-test-validator
-anchor test                       # delegates to `npm test` per Anchor.toml [scripts]
+npm run test:e2e                  # wraps `anchor test --validator legacy`
+# Anchor 1.0 defaults to surfpool; the project uses solana-test-validator
+# per design.md, so the --validator legacy flag is required.
+# `anchor test` (without the flag) fails with "Failed to spawn `surfpool`".
 
 # Deploy
 npm run deploy:devnet             # dotenv-cli wraps the RPC URL env var
@@ -100,13 +103,11 @@ The `solana-anchor-claude-skill` is pinned via `skills-lock.json` and applies wh
 
 The skill's "Do the whole thing" / "no placeholder tests" rules are also load-bearing — don't write `tests/foo.spec.ts` that just asserts the program exists; integration tests must initialize accounts, send transactions, verify state changes.
 
-## Known toolchain gaps
+## Toolchain notes
 
-These are real gaps that will block work and aren't yet fixed:
-
-- **`programs/enclz/Cargo.toml` pins `anchor-lang = "0.30.1"`** while the locally-installed Anchor CLI is `1.0.1`. `anchor build` will fail until the lib is bumped to `1.0.1` and `anchor-spl = "1.0.1"` is added with the `idl-build` feature wired through both crates.
-- **TypeScript test stack is mocha + chai + ts-mocha.** Skill prescribes `node:test` + `tsx` + Solana Kit. Migrating is a separate cleanup, not in any current OpenSpec change.
-- **`rust-toolchain.toml` pins `1.88.0`**, chosen pragmatically for transitive-dep compatibility, not because Anchor 1.0.1 specifically requires it. Re-validate on the next `anchor build`.
+- **Anchor 1.0.1's `anchor keys sync` rewrites `Anchor.toml`** and drops the per-cluster `[provider.devnet]` / `[provider.mainnet]` blocks (and the `[registry]` section). The blocks still parse correctly when restored — the normalizer just doesn't preserve them. If you ever run `keys sync` again, expect to re-add them and the unified program ID across `[programs.devnet]` / `[programs.mainnet]` (Anchor only updates `[programs.localnet]`).
+- **`cargo-build-sbf` requires rustup** to manage the platform-tools toolchain. The Arch `solana` package ships only the runtime binaries — full toolchain comes from Anza's official installer (`https://release.anza.xyz/stable/install`), which lives in `~/.local/share/solana/install/active_release/bin`. Without rustup, you'll see `Failed to execute rustup: No such file or directory`.
+- **TypeScript test stack is mocha + chai + ts-mocha + `@coral-xyz/anchor` 0.30.1.** Skill prescribes `node:test` + `tsx` + Solana Kit. The current stack works against an Anchor 1.0.1 program (verified), so migration is non-urgent — but don't add new TS infrastructure on top of `@coral-xyz/anchor`; pivot to Solana Kit when adding real instruction tests.
 
 ## Git conventions
 

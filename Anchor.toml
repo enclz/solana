@@ -5,23 +5,19 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-enclz = "Enc1zProgram11111111111111111111111111111111"
+enclz = "67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj"
 
 [programs.devnet]
-enclz = "Enc1zProgram11111111111111111111111111111111"
+enclz = "67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj"
 
 [programs.mainnet]
-enclz = "Enc1zProgram11111111111111111111111111111111"
+enclz = "67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
-wallet = "~/.config/solana/id.json"
-
-[provider.localnet]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [provider.devnet]
@@ -34,3 +30,5 @@ wallet = "./.solana/keys/mainnet-deployer.json"
 
 [scripts]
 test = "npm test"
+
+[hooks]
