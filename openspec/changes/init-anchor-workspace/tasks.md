@@ -12,7 +12,7 @@
 ## 2. Constants + errors
 
 - [x] 2.1 Create `programs/enclz/src/constants.rs` with `GROUP_SEED`, `WALLET_SEED`, `WHITELIST_SEED`, `DEFAULT_DAILY_LIMIT = 10_000_000`, `DEFAULT_PER_TX_LIMIT = 1_000_000`, `DEFAULT_HOURLY_CAP = 5`, `PROTOCOL_FEE_BPS = 10`
-- [x] 2.2 Create `programs/enclz/src/errors.rs` with `EnclzError` enum: `WhitelistViolation`, `WhitelistExpired`, `WhitelistAmountExhausted`, `DailyLimitExceeded`, `PerTxLimitExceeded`, `HourlyCapExceeded`, `NonceMismatch`, `Unauthorized`, `InvalidAmount`, `InvalidTtl` (per design.md — `InvalidAddress` omitted because `Pubkey` ABI validation makes it unreachable)
+- [x] 2.2 Create `programs/enclz/src/errors.rs` with `EnclzError` enum: `WhitelistViolation`, `WhitelistExpired`, `WhitelistAmountExhausted`, `DailyLimitExceeded`, `PerTxLimitExceeded`, `HourlyCapExceeded`, `NonceMismatch`, `Unauthorized`, `InvalidAmount`, `InvalidTtl`
 - [x] 2.3 Wire `mod constants; mod errors;` in `lib.rs`
 
 ## 3. Account state
