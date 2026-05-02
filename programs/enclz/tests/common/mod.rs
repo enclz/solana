@@ -290,14 +290,14 @@ pub fn add_to_whitelist_instruction(
     whitelist_entry: &Pubkey,
     target_address: Pubkey,
     label: [u8; 32],
-    entry_type_arg: u8,
+    entry_type: u8,
     ttl_expires_at: i64,
     approved_amount: u64,
 ) -> Instruction {
     let data = enclz::instruction::AddToWhitelist {
         target_address,
         label,
-        entry_type_arg,
+        entry_type,
         ttl_expires_at,
         approved_amount,
     }

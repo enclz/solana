@@ -95,19 +95,20 @@ Same `Anchor.toml` paths, two materialization paths for the deployer keypair:
 The `solana-anchor-claude-skill` is pinned via `skills-lock.json` and applies whenever you touch Anchor / Rust / TypeScript here. Read it for the full ruleset; the rules that bite hardest:
 
 - **No yarn, npm only.** (Already cleaned out of `Anchor.toml`.)
-- **No `@coral-xyz/anchor` for new TypeScript.** Use Solana Kit (`@solana/kit` + Kite). Existing `package.json` deps are tech debt from `anchor init`; don't add more.
 - **No Coral XYZ or Solana Labs docs.** Anchor is at `https://github.com/solana-foundation/anchor`; Solana CLI docs at `https://docs.anza.xyz/`.
 - **Anchor 1.0+ idioms.** `context.bumps.foo` (not `.get("foo").unwrap()`). `space = Foo::DISCRIMINATOR.len() + Foo::INIT_SPACE`.
 - **Save `bump: u8` on every PDA struct.**
 - **Terminology:** `onchain` / `offchain` (no hyphen), "program" not "smart contract", "Token Extensions Program" not "Token 2022".
 
-The skill's "Do the whole thing" / "no placeholder tests" rules are also load-bearing — don't write `tests/foo.spec.ts` that just asserts the program exists; integration tests must initialize accounts, send transactions, verify state changes.
+**Skill rule that this project deliberately overrides:** the skill says "no `@coral-xyz/anchor` for new TypeScript, use Solana Kit." This project's `workspace-tooling` spec instead requires `@coral-xyz/anchor` + `mocha` + `chai` + `ts-node` for integration tests, and the init-anchor-workspace `design.md` picked that stack on purpose ("Mocha+test-validator catches real CPI + ATA wiring issues"). When the skill and the spec disagree, the spec wins — write new TS instruction tests with `@coral-xyz/anchor` + ts-mocha until/unless a future openspec change migrates the stack.
+
+The skill's "Do the whole thing" / "no placeholder tests" rules are load-bearing — don't write `tests/foo.spec.ts` that just asserts the program exists; integration tests must initialize accounts, send transactions, verify state changes.
 
 ## Toolchain notes
 
 - **Anchor 1.0.1's `anchor keys sync` rewrites `Anchor.toml`** and drops the per-cluster `[provider.devnet]` / `[provider.mainnet]` blocks (and the `[registry]` section). The blocks still parse correctly when restored — the normalizer just doesn't preserve them. If you ever run `keys sync` again, expect to re-add them and the unified program ID across `[programs.devnet]` / `[programs.mainnet]` (Anchor only updates `[programs.localnet]`).
 - **`cargo-build-sbf` requires rustup** to manage the platform-tools toolchain. The Arch `solana` package ships only the runtime binaries — full toolchain comes from Anza's official installer (`https://release.anza.xyz/stable/install`), which lives in `~/.local/share/solana/install/active_release/bin`. Without rustup, you'll see `Failed to execute rustup: No such file or directory`.
-- **TypeScript test stack is mocha + chai + ts-mocha + `@coral-xyz/anchor` 0.30.1.** Skill prescribes `node:test` + `tsx` + Solana Kit. The current stack works against an Anchor 1.0.1 program (verified), so migration is non-urgent — but don't add new TS infrastructure on top of `@coral-xyz/anchor`; pivot to Solana Kit when adding real instruction tests.
+- **TypeScript test stack is mocha + chai + ts-mocha + `@coral-xyz/anchor` 0.30.1.** Skill prescribes `node:test` + `tsx` + Solana Kit, but the project spec (`openspec/specs/workspace-tooling/spec.md` Requirement: Test framework wiring) mandates the Anchor + Mocha stack — see the Conventions section above. The 0.30.1 client interoperates fine with an Anchor 1.0.1 program (IDL is the contract).
 
 ## Git conventions
 
