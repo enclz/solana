@@ -20,6 +20,19 @@ Default limits: `daily=10 USDC`, `per_tx=1 USDC`, `hourly_cap=5`. Protocol fee: 
 
 `EnclzError` variants map 1:1 to backend REST error codes: `WhitelistViolation`, `WhitelistExpired`, `WhitelistAmountExhausted`, `DailyLimitExceeded`, `PerTxLimitExceeded`, `HourlyCapExceeded`, `NonceMismatch`, `Unauthorized`, `InvalidAmount`, `InvalidTtl`. Names are stable — backend pass-through depends on them.
 
+### Backend / direct program integration
+
+External code that calls the program directly (the Enclz backend, composing programs, or auditing tools) can consume typed bindings via `@enclz/sdk`:
+
+```typescript
+import { IDL, PROGRAM_ID, type Enclz } from "@enclz/sdk";
+import { Program, AnchorProvider } from "@coral-xyz/anchor";
+
+const program = new Program<Enclz>(IDL, AnchorProvider.env());
+```
+
+See the [Distribution](#distribution) section for build and publish instructions. AI agents using the Agent REST API do not need this package.
+
 ## Setup
 
 ### Prerequisites
@@ -106,6 +119,32 @@ auto-void → reject 6th → reject stale-nonce) against the live cluster.
 - `.github/workflows/program-ci.yml` runs `anchor build`, `cargo test`,
   `anchor test --validator legacy`, `cargo tarpaulin` (gated at 85% overall /
   90% on `execute_transfer.rs`), `cargo audit`, and `cargo deny check` on every PR.
+
+## Distribution
+
+### `@enclz/sdk` npm package
+
+The `sdk/` directory contains the `@enclz/sdk` package, which re-exports the Anchor IDL JSON, the `Enclz` TypeScript type, and `PROGRAM_ID` for direct on-chain callers (program composability, auditing tools, custom backends). AI agents should use the Agent REST API + MCP server instead — see `sdk/README.md` for positioning details.
+
+```bash
+npm run build:sdk     # anchor build (if needed) + copy artifacts + tsc → sdk/dist/
+npm run publish:sdk   # build:sdk + cd sdk && npm publish --access public
+```
+
+The package version is single-sourced from `programs/enclz/Cargo.toml` via IDL `metadata.version` and written to `sdk/package.json` automatically during `npm run build:sdk`.
+
+### On-chain IDL
+
+After deploying to a cluster for the first time, publish the IDL on-chain so tooling and explorers can resolve it without installing `@enclz/sdk`:
+
+```bash
+npm run idl:init:devnet      # first deploy on devnet
+npm run idl:upgrade:devnet   # every subsequent upgrade on devnet
+npm run idl:init:mainnet     # first deploy on mainnet
+npm run idl:upgrade:mainnet  # every subsequent upgrade on mainnet
+```
+
+These scripts require the deployer keypair to be the IDL upgrade authority. Env vars (`QUICKNODE_DEVNET_RPC_URL`, `MAINNET_RPC_URL`) must be set via `.env` or the cloud environment — the scripts run through `dotenv-cli` matching the `deploy:*` pattern.
 
 ## Cloud sessions (Claude Code on the web)
 
