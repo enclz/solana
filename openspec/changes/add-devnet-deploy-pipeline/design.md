@@ -8,7 +8,6 @@ Program logic is complete after the prior three changes. To hand off to the back
 - One command (`anchor run deploy:devnet`) takes a clean checkout to a deployed, working program.
 - Smoke test exits 0 only when every step (provision → fund → transfer → auto-void → replay reject) works on devnet.
 - CI runs on every push and blocks merge below quality bar.
-- IDL committed so backend has a stable artifact to consume.
 
 **Non-Goals:**
 - Mainnet deploy.
@@ -33,9 +32,6 @@ Both run in CI, both block on critical findings.
 **`solana-security-txt` macro inline in `lib.rs`.**
 Standard auditor onboarding artifact; trivial to add. The macro's `policy` field points at the repo's top-level `SECURITY.md`, which carries the disclosure / reporting policy.
 
-**IDL committed after first deploy.**
-Yes, it is generated — but committing means backend doesn't need its own Anchor toolchain to build, and downstream changes to the IDL are visible in PR review.
-
 **Mainnet deploy guard in `deploy.ts`.**
 `migrations/deploy.ts` refuses `--mainnet` unless `--force-mainnet` is also passed. The intent is a friction-only safeguard against a single-sig key fat-fingering a mainnet upgrade before the upgrade authority is transferred to a Squads multisig. No separate doc — the constraint lives in the script and `SECURITY.md`.
 
@@ -43,15 +39,14 @@ Yes, it is generated — but committing means backend doesn't need its own Ancho
 
 - [Devnet RPC instability breaks CI smoke runs] → Smoke test runs only on `main` push, not every PR; PR-level CI uses local validator only.
 - [Coverage gate too strict slows iteration] → 85% baseline chosen because instruction handlers are mostly straight-line code; revisit if it pushes contributors to write meaningless tests.
-- [Committing IDL creates merge conflicts] → IDL only changes when public surface changes; conflicts are signal, not noise.
 
 ## Migration Plan
 
 1. Land `add-devnet-deploy-pipeline` PR.
-2. Run `anchor run deploy:devnet` once locally, capture program ID, update `declare_id!`, redeploy, commit IDL.
+2. Run `npm run deploy:devnet` once locally; deploy script captures program ID, updates `declare_id!`, redeploys.
 3. Smoke test passes.
 4. Enable CI workflow on `main` branch.
-5. Backend team uses program ID + IDL from `target/idl/enclz.json`.
+5. Backend team integrates against the deployed program ID.
 
 Rollback: program-ID rotation requires deploy with same upgrade authority. Devnet authority is the deploy keypair at `.solana/keys/devnet-deployer.json`; mainnet authority must be transferred to a Squads multisig before any user funds touch the program (rotation: `solana program set-upgrade-authority`).
 

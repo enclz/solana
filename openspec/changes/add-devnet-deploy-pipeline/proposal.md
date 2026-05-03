@@ -13,12 +13,11 @@ After all instructions are implemented + unit-tested, we need a repeatable path 
   - Runs `cargo tarpaulin` and fails if instruction-code coverage < 85% (or < 90% on `execute_transfer.rs`).
   - Runs `cargo audit` and `cargo deny check`.
 - `solana-security-txt` macro added to the program metadata (contact email, source URL, audit status placeholder).
-- Devnet program ID + IDL JSON published to `target/idl/enclz.json` and committed for backend consumption.
 
 ## Capabilities
 
 ### New Capabilities
-- `deploy-pipeline`: deployment script, smoke test, IDL publication
+- `deploy-pipeline`: deployment script, smoke test
 - `program-hardening`: CI quality gates, security.txt, dependency policy
 
 ### Modified Capabilities
@@ -28,7 +27,6 @@ After all instructions are implemented + unit-tested, we need a repeatable path 
 
 - Adds `migrations/deploy.ts`, `tests/smoke.ts`, `.github/workflows/program-ci.yml`, `deny.toml`.
 - Modifies `programs/enclz/src/lib.rs` to embed `solana_security_txt!`.
-- Commits `target/idl/enclz.json` after first devnet deploy.
-- Backend can now build against the real program ID and IDL.
+- Backend can now integrate against the deployed program ID.
 - Depends on `init-anchor-workspace`, `add-owner-instructions`, `add-execute-transfer` all being merged.
 - Mainnet deploy is explicitly **out of scope** — handled by the `/deploy-to-mainnet` skill after external audit.

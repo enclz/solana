@@ -83,9 +83,7 @@ npm run deploy:devnet
   `declare_id!` in `programs/enclz/src/lib.rs`, and `Anchor.toml`, patching the
   source files and rebuilding before deploying;
 - skips a redundant deploy if `target/deploy/enclz.so` already matches the
-  bytes deployed at `<program-id>` on the chosen cluster;
-- mirrors `target/idl/enclz.json` → `idl/enclz.json` and regenerates
-  `idl/error-map.json` so the backend has a stable artifact.
+  bytes deployed at `<program-id>` on the chosen cluster.
 
 Mainnet deploys go through `npm run deploy:mainnet -- --force-mainnet`. The
 `--force-mainnet` flag is intentionally awkward: only pass it once the
@@ -107,8 +105,7 @@ auto-void → reject 6th → reject stale-nonce) against the live cluster.
   `query-security-txt <PROGRAM_ID>`.
 - `.github/workflows/program-ci.yml` runs `anchor build`, `cargo test`,
   `anchor test --validator legacy`, `cargo tarpaulin` (gated at 85% overall /
-  90% on `execute_transfer.rs`), `cargo audit`, `cargo deny check`, and an
-  IDL drift check on every PR.
+  90% on `execute_transfer.rs`), `cargo audit`, and `cargo deny check` on every PR.
 
 ## Cloud sessions (Claude Code on the web)
 
@@ -158,9 +155,8 @@ programs/enclz/         Anchor program crate
 tests/                  TypeScript integration tests (mocha)
 tests/smoke.ts          end-to-end smoke against a live cluster (run via npm run smoke:devnet)
 migrations/deploy.ts    devnet/mainnet deploy entrypoint with program-ID drift + idempotent re-deploy
-idl/                    committed IDL + REST error map for backend / external integrators
-scripts/                CI helpers: check-coverage, sync-idl, check-idl-sync
-.github/workflows/      program-ci.yml — build, test, coverage, audit, idl-drift gates
+scripts/                CI helpers: check-coverage
+.github/workflows/      program-ci.yml — build, test, coverage, audit gates
 .solana/keys/           deployer keypairs (gitignored)
 .solana/init.sh         cloud-session keypair materialization hook
 openspec/               OpenSpec change proposals and capability specs
