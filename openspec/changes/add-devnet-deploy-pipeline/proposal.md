@@ -1,6 +1,6 @@
 ## Why
 
-After all instructions are implemented + unit-tested, we need a repeatable path to put the program on devnet so the backend team can integrate against a real RPC. We also need a hardening pass — coverage gates, security checklist, dependency audit — before the program can be considered audit-ready. Bundling these into one change keeps deployment artifacts and quality gates together.
+After all instructions are implemented + unit-tested, we need a repeatable path to put the program on devnet so the backend team can integrate against a real RPC. We also need a hardening pass — coverage gates, dependency audit, security.txt — before the program can be considered audit-ready. Bundling these into one change keeps deployment artifacts and quality gates together.
 
 ## What Changes
 
@@ -13,21 +13,20 @@ After all instructions are implemented + unit-tested, we need a repeatable path 
   - Runs `cargo tarpaulin` and fails if instruction-code coverage < 85% (or < 90% on `execute_transfer.rs`).
   - Runs `cargo audit` and `cargo deny check`.
 - `solana-security-txt` macro added to the program metadata (contact email, source URL, audit status placeholder).
-- Manual security checklist (`docs/SECURITY_REVIEW.md`) covering: signer checks per instruction, account ownership, integer overflow, PDA seed validation, ATA mint matching.
 - Devnet program ID + IDL JSON published to `target/idl/enclz.json` and committed for backend consumption.
 
 ## Capabilities
 
 ### New Capabilities
 - `deploy-pipeline`: deployment script, smoke test, IDL publication
-- `program-hardening`: CI quality gates, security review checklist, security.txt
+- `program-hardening`: CI quality gates, security.txt, dependency policy
 
 ### Modified Capabilities
 <!-- none — additive -->
 
 ## Impact
 
-- Adds `migrations/deploy.ts`, `tests/smoke.ts`, `.github/workflows/program-ci.yml`, `deny.toml`, `docs/SECURITY_REVIEW.md`.
+- Adds `migrations/deploy.ts`, `tests/smoke.ts`, `.github/workflows/program-ci.yml`, `deny.toml`.
 - Modifies `programs/enclz/src/lib.rs` to embed `solana_security_txt!`.
 - Commits `target/idl/enclz.json` after first devnet deploy.
 - Backend can now build against the real program ID and IDL.

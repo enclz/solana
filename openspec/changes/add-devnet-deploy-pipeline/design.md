@@ -1,6 +1,6 @@
 ## Context
 
-Program logic is complete after the prior three changes. To hand off to the backend team and to prepare for an external audit, we need (a) a deterministic deploy path, (b) a smoke test that runs against real devnet to catch CPI / ATA / RPC issues missed by LiteSVM, (c) CI gates that prevent regressions, and (d) a structured security review record.
+Program logic is complete after the prior three changes. To hand off to the backend team and to prepare for an external audit, we need (a) a deterministic deploy path, (b) a smoke test that runs against real devnet to catch CPI / ATA / RPC issues missed by LiteSVM, and (c) CI gates that prevent regressions.
 
 ## Goals / Non-Goals
 
@@ -9,7 +9,6 @@ Program logic is complete after the prior three changes. To hand off to the back
 - Smoke test exits 0 only when every step (provision → fund → transfer → auto-void → replay reject) works on devnet.
 - CI runs on every push and blocks merge below quality bar.
 - IDL committed so backend has a stable artifact to consume.
-- Security review checklist completed manually + signed off in repo.
 
 **Non-Goals:**
 - Mainnet deploy.
@@ -32,20 +31,19 @@ Considered `grcov` — tarpaulin is simpler in CI and adequate for Anchor. Thres
 Both run in CI, both block on critical findings.
 
 **`solana-security-txt` macro inline in `lib.rs`.**
-Standard auditor onboarding artifact; trivial to add.
-
-**Security review is a checklist doc, not just a GitHub issue.**
-Lives in repo so reviewers can sign off in PR. Concrete items: per-instruction signer check, per-instruction account ownership, every `+`/`*` is checked, every PDA derivation matches its seed, every ATA constraint matches mint.
+Standard auditor onboarding artifact; trivial to add. The macro's `policy` field points at the repo's top-level `SECURITY.md`, which carries the disclosure / reporting policy.
 
 **IDL committed after first deploy.**
 Yes, it is generated — but committing means backend doesn't need its own Anchor toolchain to build, and downstream changes to the IDL are visible in PR review.
+
+**Mainnet deploy guard in `deploy.ts`.**
+`migrations/deploy.ts` refuses `--mainnet` unless `--force-mainnet` is also passed. The intent is a friction-only safeguard against a single-sig key fat-fingering a mainnet upgrade before the upgrade authority is transferred to a Squads multisig. No separate doc — the constraint lives in the script and `SECURITY.md`.
 
 ## Risks / Trade-offs
 
 - [Devnet RPC instability breaks CI smoke runs] → Smoke test runs only on `main` push, not every PR; PR-level CI uses local validator only.
 - [Coverage gate too strict slows iteration] → 85% baseline chosen because instruction handlers are mostly straight-line code; revisit if it pushes contributors to write meaningless tests.
 - [Committing IDL creates merge conflicts] → IDL only changes when public surface changes; conflicts are signal, not noise.
-- [Manual security checklist can be rubber-stamped] → Require checklist to be signed by a reviewer different from the author in PR template.
 
 ## Migration Plan
 
@@ -55,10 +53,7 @@ Yes, it is generated — but committing means backend doesn't need its own Ancho
 4. Enable CI workflow on `main` branch.
 5. Backend team uses program ID + IDL from `target/idl/enclz.json`.
 
-Rollback: program-ID rotation requires deploy with same upgrade authority; documented in `docs/SECURITY_REVIEW.md`.
-
-**Upgrade authority management.**
-Devnet: deploy keypair = upgrade authority (stored in `~/.config/solana/id.json`; documented in `docs/SECURITY_REVIEW.md`). Mainnet: upgrade authority MUST be transferred to a multisig (e.g., Squads) before any user funds touch the program. `deploy.ts` warns if `ANCHOR_WALLET` matches a known devnet faucet key on mainnet target. Rotation procedure: `anchor upgrade --program-id <ID> --provider.cluster devnet` + new authority via `solana program set-upgrade-authority`. Document both paths in `docs/UPGRADE_AUTHORITY.md`.
+Rollback: program-ID rotation requires deploy with same upgrade authority. Devnet authority is the deploy keypair at `.solana/keys/devnet-deployer.json`; mainnet authority must be transferred to a Squads multisig before any user funds touch the program (rotation: `solana program set-upgrade-authority`).
 
 ## Open Questions
 

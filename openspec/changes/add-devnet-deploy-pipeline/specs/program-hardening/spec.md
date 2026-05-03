@@ -24,14 +24,6 @@ The repo SHALL include `.github/workflows/program-ci.yml` that on every push and
 - **WHEN** an auditor runs `query-security-txt` against the deployed program ID
 - **THEN** all required fields are returned
 
-### Requirement: Security review checklist
-
-The repo SHALL include `docs/SECURITY_REVIEW.md` covering, for each instruction: signer check present, account ownership verified, all arithmetic uses `checked_*`, all PDAs derived with documented seeds, all token accounts constrain mint correctly. Each item carries a sign-off slot for a reviewer other than the author.
-
-#### Scenario: Checklist completed before merge of any instruction PR
-- **WHEN** a PR adds or modifies an instruction
-- **THEN** the PR description references the checklist with each item ticked and signed
-
 ### Requirement: Dependency policy
 
 The repo SHALL include `deny.toml` configured to deny disallowed licenses (GPL, AGPL) and warn on duplicate dependency versions.

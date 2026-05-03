@@ -77,6 +77,39 @@ anchor build
 npm run deploy:devnet
 ```
 
+`npm run deploy:devnet` wraps `migrations/deploy.ts` and:
+
+- detects program-ID drift between `target/deploy/enclz-keypair.json`,
+  `declare_id!` in `programs/enclz/src/lib.rs`, and `Anchor.toml`, patching the
+  source files and rebuilding before deploying;
+- skips a redundant deploy if `target/deploy/enclz.so` already matches the
+  bytes deployed at `<program-id>` on the chosen cluster;
+- mirrors `target/idl/enclz.json` → `idl/enclz.json` and regenerates
+  `idl/error-map.json` so the backend has a stable artifact.
+
+Mainnet deploys go through `npm run deploy:mainnet -- --force-mainnet`. The
+`--force-mainnet` flag is intentionally awkward: only pass it once the
+upgrade authority has been transferred to a Squads multisig.
+
+After a successful devnet deploy, run the smoke suite end-to-end:
+
+```bash
+npm run smoke:devnet
+```
+
+It exercises the full happy path (provision → fund → 5 × $1 transfer →
+auto-void → reject 6th → reject stale-nonce) against the live cluster.
+
+## Security & quality gates
+
+- [`SECURITY.md`](SECURITY.md) — disclosure policy and reporting contact.
+- `solana_security_txt!` is embedded in the program; auditors can fetch it via
+  `query-security-txt <PROGRAM_ID>`.
+- `.github/workflows/program-ci.yml` runs `anchor build`, `cargo test`,
+  `anchor test --validator legacy`, `cargo tarpaulin` (gated at 85% overall /
+  90% on `execute_transfer.rs`), `cargo audit`, `cargo deny check`, and an
+  IDL drift check on every PR.
+
 ## Cloud sessions (Claude Code on the web)
 
 `.claude/settings.json` registers a `SessionStart` hook that runs `.solana/init.sh`. The hook materializes deployer keypairs from environment variables into `.solana/keys/<cluster>-deployer.json` — but only when `CLAUDE_CODE_REMOTE=true`, so locally it's a no-op.
@@ -123,8 +156,13 @@ programs/enclz/         Anchor program crate
 └── src/state/          GroupConfig, AgentWallet, WhitelistEntry
 
 tests/                  TypeScript integration tests (mocha)
+tests/smoke.ts          end-to-end smoke against a live cluster (run via npm run smoke:devnet)
+migrations/deploy.ts    devnet/mainnet deploy entrypoint with program-ID drift + idempotent re-deploy
+idl/                    committed IDL + REST error map for backend / external integrators
+scripts/                CI helpers: check-coverage, sync-idl, check-idl-sync
+.github/workflows/      program-ci.yml — build, test, coverage, audit, idl-drift gates
 .solana/keys/           deployer keypairs (gitignored)
 .solana/init.sh         cloud-session keypair materialization hook
 openspec/               OpenSpec change proposals and capability specs
-docs/                   product + architectural specification
+docs/                   product + architectural specification (submodule)
 ```
