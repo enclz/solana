@@ -32,15 +32,3 @@ The repo SHALL include `tests/smoke.ts` that, against devnet, performs:
 #### Scenario: Any step fails
 - **WHEN** any expected outcome differs from spec
 - **THEN** the script exits non-zero with a clear error pointing to the failed step
-
-### Requirement: IDL artifact committed
-
-After the first successful deploy, `target/idl/enclz.json` SHALL be committed to the repo at a stable path (`idl/enclz.json` mirroring `target/idl/enclz.json`) so the backend can consume it without running `anchor build`.
-
-#### Scenario: IDL exists in repo
-- **WHEN** backend developer clones the repo
-- **THEN** `idl/enclz.json` is present and validates against the deployed program ID
-
-#### Scenario: IDL drift caught in PR
-- **WHEN** any change modifies the program's public surface (instruction args, account structs)
-- **THEN** the diff to `idl/enclz.json` appears in the same PR
