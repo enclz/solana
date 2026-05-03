@@ -9,9 +9,7 @@
     "test:e2e": "anchor test --validator legacy",
     "deploy:devnet": "dotenv -- ts-node migrations/deploy.ts --devnet",
     "deploy:mainnet": "dotenv -- ts-node migrations/deploy.ts --mainnet",
-    "smoke:devnet": "dotenv -- ts-node tests/smoke.ts",
-    "idl:check": "node scripts/check-idl-sync.mjs",
-    "idl:sync": "node scripts/sync-idl.mjs"
+    "smoke:devnet": "dotenv -- ts-node tests/smoke.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1"

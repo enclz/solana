@@ -14,9 +14,7 @@
  *   3. Best-effort idempotent check: dumps the deployed program binary via
  *      `solana program dump`, compares hashes with `target/deploy/enclz.so`.
  *      If identical, prints "no upgrade needed" and exits 0.
- *   4. Otherwise runs `anchor deploy --provider.cluster <cluster>`,
- *      then mirrors `target/idl/enclz.json` → `idl/enclz.json` and
- *      regenerates `idl/error-map.json`.
+ *   4. Otherwise runs `anchor deploy --provider.cluster <cluster>`.
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -32,9 +30,6 @@ const PROGRAM_KEYPAIR = path.join(
   "target/deploy/enclz-keypair.json"
 );
 const PROGRAM_SO = path.join(REPO_ROOT, "target/deploy/enclz.so");
-const IDL_TARGET = path.join(REPO_ROOT, "target/idl/enclz.json");
-const IDL_COMMITTED = path.join(REPO_ROOT, "idl/enclz.json");
-const ERROR_MAP_COMMITTED = path.join(REPO_ROOT, "idl/error-map.json");
 
 type Cluster = "devnet" | "mainnet";
 
@@ -133,33 +128,6 @@ function checkIdempotent(programId: string, cluster: Cluster): boolean {
   return hashFile(PROGRAM_SO) === hashFile(dumpPath);
 }
 
-function syncIdlArtifacts(): void {
-  if (!existsSync(IDL_TARGET)) {
-    console.warn(
-      `skipping IDL sync: ${path.relative(REPO_ROOT, IDL_TARGET)} not found`
-    );
-    return;
-  }
-  execSync(`mkdir -p "${path.dirname(IDL_COMMITTED)}"`);
-  const idl = JSON.parse(readFileSync(IDL_TARGET, "utf8"));
-  writeFileSync(IDL_COMMITTED, JSON.stringify(idl, null, 2) + "\n");
-  console.log(`wrote ${path.relative(REPO_ROOT, IDL_COMMITTED)}`);
-
-  const errors = Array.isArray(idl?.errors) ? idl.errors : [];
-  const errorMap = errors.map((entry: { code: number; name: string }) => ({
-    anchorCode: entry.code,
-    name: entry.name,
-    restErrorCode: toCamelCase(entry.name),
-  }));
-  writeFileSync(ERROR_MAP_COMMITTED, JSON.stringify(errorMap, null, 2) + "\n");
-  console.log(`wrote ${path.relative(REPO_ROOT, ERROR_MAP_COMMITTED)}`);
-}
-
-function toCamelCase(input: string): string {
-  if (!input) return input;
-  return input[0].toLowerCase() + input.slice(1);
-}
-
 function main(): void {
   const { cluster, forceMainnet, skipIdempotenceCheck } = parseArgs();
 
@@ -204,7 +172,6 @@ function main(): void {
     console.log(
       `no upgrade needed — deployed binary matches local target/deploy/enclz.so`
     );
-    syncIdlArtifacts();
     process.exit(0);
   }
 
@@ -212,8 +179,6 @@ function main(): void {
   console.log(`> ${cmd}`);
   execSync(cmd, { stdio: "inherit", cwd: REPO_ROOT });
   console.log(`deployed to ${cluster}: ${keypairPubkey}`);
-
-  syncIdlArtifacts();
 }
 
 main();

@@ -42,22 +42,10 @@
 
 - [x] 5.5.1 Add `deploy.ts` guard: if `--mainnet` and `--force-mainnet` is not set, refuse the deploy. Intent: friction-only safeguard against single-sig fat-fingering before the upgrade authority is transferred to a Squads multisig.
 
-## 5.6 Error map publication
+## 6. Verification
 
-- [x] 5.6.1 Generate `idl/error-map.json` by extracting Anchor IDL errors array and mapping each `{ code, name }` to `{ anchorCode, name, restErrorCode: camelCase(name) }` (script `scripts/sync-idl.mjs`)
-- [x] 5.6.2 Commit `idl/error-map.json` alongside `idl/enclz.json` (initial map seeded from `EnclzError`; will be re-emitted from real IDL after first deploy)
-- [x] 5.6.3 Add CI step: diff `target/idl/enclz.json` errors vs `idl/error-map.json` codes; fail if drift (`scripts/check-idl-sync.mjs` + `idl-drift` job)
-
-## 6. IDL publication
-
-- [ ] 6.1 After first successful devnet deploy, copy `target/idl/enclz.json` → `idl/enclz.json` (script `scripts/sync-idl.mjs`; awaiting first deploy)
-- [ ] 6.2 Commit `idl/enclz.json` with the resolved program ID (awaiting first deploy)
-- [x] 6.3 Add CI step that diffs `target/idl/enclz.json` against `idl/enclz.json` and fails if drift exists without commit (`scripts/check-idl-sync.mjs` + `idl-drift` job)
-
-## 7. Verification
-
-- [ ] 7.1 `npm run deploy:devnet`: deploys cleanly from fresh checkout (deferred — requires devnet RPC + funded deployer)
-- [ ] 7.2 `npm run smoke:devnet`: exits 0 (deferred — depends on 7.1)
-- [ ] 7.3 CI workflow green on a probe PR (deferred — verified after first PR runs the workflow)
-- [ ] 7.4 `query-security-txt <program-id>` returns embedded fields (deferred — depends on 7.1)
-- [ ] 7.5 Backend team confirms they can build against `idl/enclz.json` + deployed program ID (deferred — depends on 7.1)
+- [ ] 6.1 `npm run deploy:devnet`: deploys cleanly from fresh checkout (deferred — requires devnet RPC + funded deployer)
+- [ ] 6.2 `npm run smoke:devnet`: exits 0 (deferred — depends on 6.1)
+- [ ] 6.3 CI workflow green on a probe PR (deferred — verified after first PR runs the workflow)
+- [ ] 6.4 `query-security-txt <program-id>` returns embedded fields (deferred — depends on 6.1)
+- [ ] 6.5 Backend team confirms they can integrate against the deployed program ID (deferred — depends on 6.1)
