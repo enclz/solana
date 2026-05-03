@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Enclz is an Anchor program at `programs/enclz/` that enforces spend policy onchain for AI agent fleets. A separate backend (not in this repo) calls `execute_transfer` and translates Anchor errors to REST. The codebase is greenfield and driven by OpenSpec change proposals — see `README.md` for setup, deploy, and the project tour.
 
-`docs/SPECIFICATION.md` is the source of truth for PDAs, seeds, account fields, sizing, and error names. `openspec/changes/init-anchor-workspace/specs/program-state/spec.md` formalizes those into requirements with WHEN/THEN scenarios. **If code disagrees with the spec, fix the code, not the spec** — and if `tasks.md` disagrees with `design.md` or `specs/`, fix `tasks.md` (precedent: commit `30e6585`).
+`docs/SPECIFICATION.md` is the source of truth for PDAs, seeds, account fields, sizing, and error names. `openspec/specs/program-state/spec.md` formalizes those into requirements with WHEN/THEN scenarios. **If code disagrees with the spec, fix the code, not the spec** — and if `tasks.md` disagrees with `design.md` or `specs/`, fix `tasks.md` (precedent: commit `30e6585`).
 
 ## Commands
 
@@ -66,15 +66,12 @@ All three derive `InitSpace`. Always size accounts as `8 + Foo::INIT_SPACE` — 
 3. If a task contradicts `design.md` or the spec, the spec wins — patch `tasks.md`.
 4. Skills `openspec-explore`, `openspec-propose`, `openspec-apply-change`, `openspec-archive-change` exist but are optional helpers; the directory structure is the protocol.
 
-Status of the five existing changes:
+Status of active changes (archived ones live in `openspec/changes/archive/`):
 
 | Change | State |
 |---|---|
-| `init-anchor-workspace` | Mostly done — items 1.8 / 4.6 / 5.1 / 5.3 (anchor build/test from clean checkout) still pending |
-| `add-owner-instructions` | Not started — `initialize_group`, `add_agent`, whitelist mgmt instruction handlers |
-| `add-execute-transfer` | Not started — the core enforcement instruction |
-| `add-execute-swap-and-yield` | Not started — Jupiter swap + lending CPIs |
 | `add-devnet-deploy-pipeline` | Not started — CI, hardening, devnet deploy |
+| `add-idl-publishing` | Not started — @enclz/sdk + on-chain IDL publication |
 
 `openspec/changes/archive/` is for completed changes; once a change is fully implemented and shipped, archive it there.
 
