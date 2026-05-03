@@ -31,4 +31,10 @@ wallet = "./.solana/keys/mainnet-deployer.json"
 [scripts]
 test = "npm test"
 
+# Load the test_stubs program into the test-validator at its build-time
+# address so Mocha specs can use it as a stand-in for Jupiter / Kamino.
+[[test.genesis]]
+address = "4PhEhEZuZbQTC7WpKS6yMoRV6ySmpXVXUvPHQ624XQDU"
+program = "target/deploy/test_stubs.so"
+
 [hooks]

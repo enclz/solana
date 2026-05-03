@@ -1,0 +1,17 @@
+[package]
+name = "test_stubs"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "test_stubs"
+
+[features]
+default = []
+no-entrypoint = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "1.0.1"

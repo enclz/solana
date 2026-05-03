@@ -25,7 +25,7 @@
 - [ ] 3.1 Create `.github/workflows/program-ci.yml`
 - [ ] 3.2 Job `build`: checkout + install solana + anchor + rust toolchain + run `anchor build`
 - [ ] 3.3 Job `test`: `cargo test --package enclz` then `anchor test --skip-build`
-- [ ] 3.4 Job `coverage`: install `cargo-tarpaulin`, run `cargo tarpaulin --packages enclz --out Xml`, parse, fail if instruction coverage < 85% or `execute_transfer.rs` < 90%
+- [ ] 3.4 Job `coverage`: install `cargo-tarpaulin`, run `cargo tarpaulin --packages enclz --out Xml`, parse, fail if instruction coverage < 85% on any of `execute_transfer.rs`, `execute_swap.rs`, `execute_lending_op.rs`; `execute_transfer.rs` threshold is 90%
 - [ ] 3.5 Job `audit`: `cargo install cargo-audit cargo-deny`, run both, fail on critical
 - [ ] 3.6 Workflow triggers: push to `main`, PR to `main`
 
@@ -65,3 +65,4 @@
 - [ ] 7.4 `query-security-txt <program-id>` returns embedded fields
 - [ ] 7.5 SECURITY_REVIEW.md fully signed off
 - [ ] 7.6 Backend team confirms they can build against `idl/enclz.json` + deployed program ID
+- [ ] 7.7 Backend team confirms `/v1/swap`, `/v1/deposit`, `/v1/withdraw` routes integrate correctly against the deployed program on devnet
