@@ -305,5 +305,8 @@ mod tests {
         assert_eq!(EnclzError::InvalidAmount as u32, 8);
         assert_eq!(EnclzError::InvalidTtl as u32, 9);
         assert_eq!(EnclzError::TooManyAgents as u32, 10);
+        assert_eq!(EnclzError::InvalidMint as u32, 11);
+        assert_eq!(EnclzError::InvalidFeeAccount as u32, 12);
+        assert_eq!(EnclzError::InvalidTokenAccount as u32, 13);
     }
 }

@@ -24,4 +24,10 @@ pub enum EnclzError {
     InvalidTtl,
     #[msg("Group has reached its maximum agent count")]
     TooManyAgents,
+    #[msg("Token account mint does not match across transfer legs")]
+    InvalidMint,
+    #[msg("Protocol fee token account does not match group_config.protocol_fee_wallet")]
+    InvalidFeeAccount,
+    #[msg("Token account owner does not match the expected agent_wallet PDA")]
+    InvalidTokenAccount,
 }

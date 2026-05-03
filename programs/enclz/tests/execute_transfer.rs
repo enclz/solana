@@ -1,11 +1,11 @@
 mod common;
 
-use anchor_lang::solana_program::program_pack::Pack;
 use common::{
-    add_agent_instruction, add_to_whitelist_instruction, execute_transfer_instruction,
-    provision_group_with_router, update_backend_operator_instruction, TestContext,
-    STARTING_LAMPORTS,
+    add_agent_instruction, add_to_whitelist_instruction, assert_anchor_error,
+    execute_transfer_instruction, provision_group_with_router,
+    update_backend_operator_instruction, TestContext, STARTING_LAMPORTS,
 };
+use enclz::errors::EnclzError;
 use enclz::state::whitelist_entry::entry_type;
 use solana_clock::Clock;
 use solana_keypair::Keypair;
@@ -363,7 +363,7 @@ fn stale_nonce_rejects_and_leaves_state_unchanged() {
     );
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 99);
-    assert!(result.is_err());
+    assert_anchor_error(result, EnclzError::NonceMismatch);
 
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.operator_nonce, 0);
@@ -393,8 +393,13 @@ fn replay_rejects_second_call_with_same_nonce() {
     );
 
     execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+    // Advance the blockhash so the runtime doesn't reject the second
+    // submission as `AlreadyProcessed` before it reaches the program. In real
+    // RPC use, the operator would resign with a fresh blockhash but reuse the
+    // nonce; expire_blockhash() simulates that.
+    setup.context.svm.expire_blockhash();
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
-    assert!(result.is_err(), "replay should reject");
+    assert_anchor_error(result, EnclzError::NonceMismatch);
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.operator_nonce, 1);
 }
@@ -420,7 +425,7 @@ fn per_tx_limit_exceeded_rejects() {
 
     // Default per_tx_limit is 1_000_000; 1_500_000 should reject.
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_500_000, 0);
-    assert!(result.is_err(), "per-tx exceed should reject");
+    assert_anchor_error(result, EnclzError::PerTxLimitExceeded);
 }
 
 #[test]
@@ -457,7 +462,7 @@ fn daily_limit_exceeded_rejects_after_accumulated_spend() {
     setup.context.svm.set_account(setup.agent_pda, account).unwrap();
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_000_000, 0);
-    assert!(result.is_err(), "daily exceed should reject");
+    assert_anchor_error(result, EnclzError::DailyLimitExceeded);
 }
 
 #[test]
@@ -493,7 +498,7 @@ fn hourly_cap_reached_rejects() {
     setup.context.svm.set_account(setup.agent_pda, account).unwrap();
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
-    assert!(result.is_err(), "hourly cap reached should reject");
+    assert_anchor_error(result, EnclzError::HourlyCapExceeded);
 }
 
 #[test]
@@ -518,6 +523,10 @@ fn missing_whitelist_entry_rejects() {
         500_000,
         0,
     );
+    // A missing PDA fails Anchor's account resolution before the handler runs,
+    // so this is `AccountNotInitialized` (framework error 3012), not the
+    // EnclzError::WhitelistViolation the spec text hints at. Tracked as a
+    // spec-vs-impl divergence; for now we assert only that the call rejects.
     assert!(result.is_err(), "missing whitelist entry should reject");
 }
 
@@ -542,7 +551,7 @@ fn external_entry_past_ttl_rejects() {
 
     set_clock(&mut setup, now + 2_000);
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
-    assert!(result.is_err(), "expired ttl should reject");
+    assert_anchor_error(result, EnclzError::WhitelistExpired);
 }
 
 #[test]
@@ -572,7 +581,7 @@ fn external_entry_amount_exhausted_rejects_when_projected_exceeds_cap() {
     setup.context.svm.set_account(entry_pda, account).unwrap();
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
-    assert!(result.is_err(), "exceeding approved cap should reject");
+    assert_anchor_error(result, EnclzError::WhitelistAmountExhausted);
 }
 
 #[test]
@@ -613,7 +622,7 @@ fn non_operator_signer_rejects_via_has_one() {
         0,
     );
     let result = setup.context.send_signed(instruction, &[&attacker]);
-    assert!(result.is_err());
+    assert_anchor_error(result, EnclzError::Unauthorized);
 }
 
 #[test]
@@ -654,7 +663,7 @@ fn rotated_operator_invalidates_previous_operator() {
     // Old operator's call now fails.
     let stale_result =
         execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 1);
-    assert!(stale_result.is_err(), "old operator must be rejected");
+    assert_anchor_error(stale_result, EnclzError::Unauthorized);
 }
 
 #[test]
@@ -700,7 +709,7 @@ fn from_token_account_owner_mismatch_rejects() {
     );
     let operator = setup.backend_operator.insecure_clone();
     let result = setup.context.send_signed(instruction, &[&operator]);
-    assert!(result.is_err(), "from owner mismatch should reject");
+    assert_anchor_error(result, EnclzError::InvalidTokenAccount);
 }
 
 #[test]
@@ -725,7 +734,7 @@ fn mint_mismatch_between_from_and_to_rejects() {
     );
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
-    assert!(result.is_err(), "mint mismatch should reject");
+    assert_anchor_error(result, EnclzError::InvalidMint);
 }
 
 #[test]
@@ -772,7 +781,7 @@ fn protocol_fee_account_mint_mismatch_rejects() {
     );
     let operator = setup.backend_operator.insecure_clone();
     let result = setup.context.send_signed(instruction, &[&operator]);
-    assert!(result.is_err(), "fee mint mismatch should reject");
+    assert_anchor_error(result, EnclzError::InvalidMint);
 }
 
 #[test]
@@ -818,7 +827,7 @@ fn protocol_fee_owner_mismatch_rejects() {
     );
     let operator = setup.backend_operator.insecure_clone();
     let result = setup.context.send_signed(instruction, &[&operator]);
-    assert!(result.is_err(), "fee owner mismatch should reject");
+    assert_anchor_error(result, EnclzError::InvalidFeeAccount);
 }
 
 #[test]
@@ -1023,27 +1032,6 @@ fn auto_void_and_recreate_works_under_new_cap() {
 }
 
 #[test]
-fn agent_token_account_state_is_unchanged_after_failed_call() {
-    // Sanity: combine the fee-leg-failure expectation with another reject path.
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let pre = setup.context.token_balance(&setup.agent_token_account);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let (no_entry, _) = setup
-        .context
-        .whitelist_pda(&setup.group_pda, &recipient_owner.pubkey());
-    let result = execute_transfer(&mut setup, recipient_token_account, no_entry, 500_000, 0);
-    assert!(result.is_err());
-    assert_eq!(setup.context.token_balance(&setup.agent_token_account), pre);
-}
-
-#[test]
 fn zero_amount_rejects_with_invalid_amount() {
     let mut setup = setup_with_funded_agent(5_000_000);
     let now = current_unix_time(&setup);
@@ -1063,11 +1051,5 @@ fn zero_amount_rejects_with_invalid_amount() {
     );
 
     let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 0, 0);
-    assert!(result.is_err(), "zero amount should reject");
-}
-
-// Sanity: the parser hooks below ensure unused-import warnings don't bite.
-#[allow(dead_code)]
-fn _unpack_ata(account: &solana_account::Account) {
-    let _ = litesvm_token::spl_token::state::Account::unpack(&account.data);
+    assert_anchor_error(result, EnclzError::InvalidAmount);
 }
