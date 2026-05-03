@@ -66,8 +66,8 @@ pub from_token_account: Account<'info, TokenAccount>,
 ```
 Anchor `Token::Account` does not enforce owner by default; explicit constraint required.
 
-**USDC-only at the on-chain layer for v1.**
-`from_token_account.mint` must equal the USDC mint pubkey (passed as a constant). SOL and PUSD support deferred to a future change; allowing arbitrary mints would break 6-decimal limit accounting.
+**Mint consistency enforced; absolute USDC pin deferred.**
+The handler enforces `from_token_account.mint == to_token_account.mint == protocol_fee_token_account.mint` (see the constraint code above). It does **not** pin the mint to a hardcoded `USDC_MINT` constant — that would require fixture infrastructure (preloaded mint at a known mainnet address) for both LiteSVM and `solana-test-validator`-based tests, and the consistency rule already eliminates the security-critical attack class (rerouting fees to a different-mint ATA the attacker controls). The orchestrator's choice of mint at `add_agent` time becomes the agent's effective operating mint; for v1 that's always USDC by convention, and the spend-limit accounting is denominated in 6-decimal units to match. Adding an absolute USDC mint pin is tracked as a future hardening change.
 
 **Reset boundary uses clock-aligned windows, not sliding.**
 ```rust

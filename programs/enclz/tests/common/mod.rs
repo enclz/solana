@@ -359,6 +359,44 @@ pub fn remove_from_whitelist_instruction(
     }
 }
 
+pub fn execute_transfer_instruction(
+    program_id: &Pubkey,
+    backend_operator: &Pubkey,
+    group_config: &Pubkey,
+    group_owner: &Pubkey,
+    agent_wallet: &Pubkey,
+    from_token_account: &Pubkey,
+    to_token_account: &Pubkey,
+    whitelist_entry: &Pubkey,
+    protocol_fee_token_account: &Pubkey,
+    amount: u64,
+    expected_nonce: u64,
+    agent_index: u8,
+) -> Instruction {
+    let data = enclz::instruction::ExecuteTransfer {
+        amount,
+        expected_nonce,
+        agent_index,
+    }
+    .data();
+    Instruction {
+        program_id: *program_id,
+        accounts: vec![
+            AccountMeta::new_readonly(*backend_operator, true),
+            AccountMeta::new_readonly(*group_config, false),
+            AccountMeta::new(*group_owner, false),
+            AccountMeta::new(*agent_wallet, false),
+            AccountMeta::new(*from_token_account, false),
+            AccountMeta::new(*to_token_account, false),
+            AccountMeta::new(*whitelist_entry, false),
+            AccountMeta::new(*protocol_fee_token_account, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 pub fn provision_group_with_router(
     context: &mut TestContext,
     backend_operator: Pubkey,
