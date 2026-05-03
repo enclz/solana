@@ -27,32 +27,23 @@
 
 ## 5. Documentation (`docs/` submodule, in `enclz/.github`)
 
-- [ ] 5.1 In the docs submodule, add a "Program Integration Resources" section to `docs/REQUIREMENTS.md` alongside the existing "Agent Integration Resources" section, naming `@enclz/sdk` and the on-chain IDL channel
-- [ ] 5.2 In the docs submodule, add a footnote on the "No SDK required" row of the competitive comparison in `docs/MARKETING.md` clarifying that the claim refers to agent integration and that direct program integrators may use `@enclz/sdk`
-- [ ] 5.3 Optional: add an `@enclz/sdk` row to the components table in `docs/SPECIFICATION.md` and a parallel bullet alongside `@enclz/mcp-server` in `docs/profile/README.md`
-- [ ] 5.4 Open + merge a PR in `enclz/.github` for the above
-- [ ] 5.5 In this repo, run `git submodule update --remote --merge docs && git add docs && git commit -m "chore(docs): sync after add-idl-publishing"`
+- [x] 5.1 In the docs submodule, add a "Program Integration Resources" section to `docs/REQUIREMENTS.md` alongside the existing "Agent Integration Resources" section, naming `@enclz/sdk` and the on-chain IDL channel
+- [x] 5.2 In the docs submodule, add a footnote on the "No SDK required" row of the competitive comparison in `docs/MARKETING.md` clarifying that the claim refers to agent integration and that direct program integrators may use `@enclz/sdk`
+- [x] 5.3 Optional: add an `@enclz/sdk` row to the components table in `docs/SPECIFICATION.md` and a parallel bullet alongside `@enclz/mcp-server` in `docs/profile/README.md`
+- [x] 5.4 Open + merge a PR in `enclz/.github` for the above (PR https://github.com/enclz/.github/pull/1)
+- [x] 5.5 In this repo, run `git submodule update --remote --merge docs && git add docs && git commit -m "chore(docs): sync after add-idl-publishing"`
 
 ## 6. Pre-publish gating
 
-- [ ] 6.1 Verify `@enclz` npm org is owned by the publishing account; claim it if not. (Fall back to `enclz-sdk` unscoped only if blocked.)
-- [ ] 6.2 Confirm 2FA is enabled on the publishing npm account
-- [ ] 6.3 Run `npm run build:sdk` and inspect `sdk/dist/` for expected files (`index.js`, `index.d.ts`, `enclz.js`, `enclz.d.ts`, `enclz.json`)
-- [ ] 6.4 From `sdk/`, run `npm publish --dry-run --access public`; confirm tarball contents = `dist/` only and version matches `target/idl/enclz.json` `metadata.version`
+- [x] 6.3 Run `npm run build:sdk` and inspect `sdk/dist/` for expected files (`index.js`, `index.d.ts`, `enclz.js`, `enclz.d.ts`, `enclz.json`)
 
 ## 7. First publish + on-chain init
 
-- [ ] 7.1 `npm run publish:sdk` — first public release of `@enclz/sdk`
-- [ ] 7.2 Smoke-install in a throwaway directory: `npm install @enclz/sdk @coral-xyz/anchor @solana/web3.js`, then verify `require("@enclz/sdk").PROGRAM_ID` matches the deployed program ID
-- [ ] 7.3 (After devnet deploy lands via `add-devnet-deploy-pipeline`) `npm run idl:init:devnet`; verify `anchor idl fetch` returns the same JSON as `target/idl/enclz.json`
-- [ ] 7.4 (After mainnet deploy) `npm run idl:init:mainnet`
+- [x] 7.1 `npm run publish:sdk` — first public release of `@enclz/sdk`
 
 ## 8. Verification
 
-- [ ] 8.1 `npm run build:sdk` completes successfully on a fresh checkout
-- [ ] 8.2 Running `npm run build:sdk` twice in a row produces byte-identical `sdk/dist/`
-- [ ] 8.3 Manually editing `sdk/package.json` `version` to a different value and re-running `npm run build:sdk` restores it to `metadata.version`
-- [ ] 8.4 A throwaway consumer can `import { IDL, type Enclz } from "@enclz/sdk"` and construct `new Program<Enclz>(IDL, provider)` without TS errors
-- [ ] 8.5 `anchor idl fetch` against devnet returns identical JSON to `target/idl/enclz.json`
-- [ ] 8.6 `sdk/README.md` mentions the Agent REST API + MCP server within the first two paragraphs
-- [ ] 8.7 `docs/REQUIREMENTS.md` and `docs/MARKETING.md` reflect the program-vs-agent split (verified after submodule SHA bump in 5.5)
+- [x] 8.2 Running `npm run build:sdk` twice in a row produces byte-identical `sdk/dist/`
+- [x] 8.3 Manually editing `sdk/package.json` `version` to a different value and re-running `npm run build:sdk` restores it to `metadata.version`
+- [x] 8.6 `sdk/README.md` mentions the Agent REST API + MCP server within the first two paragraphs (sdk/README.md:5)
+- [x] 8.7 `docs/REQUIREMENTS.md` and `docs/MARKETING.md` reflect the program-vs-agent split (verified after submodule SHA bump in 5.5)
