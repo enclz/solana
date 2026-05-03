@@ -7,20 +7,39 @@ use anchor_lang::{AccountDeserialize, InstructionData};
 use anchor_spl::associated_token::{get_associated_token_address, ID as ASSOCIATED_TOKEN_PROGRAM_ID};
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use enclz::constants::{GROUP_SEED, WALLET_SEED, WHITELIST_SEED};
+use enclz::errors::EnclzError;
 use enclz::state::{AgentWallet, GroupConfig, WhitelistEntry};
 use litesvm::{types::TransactionResult, LiteSVM};
 use litesvm_token::{spl_token, CreateAssociatedTokenAccount, CreateMint, MintTo};
 use solana_account::Account;
-use solana_instruction::{AccountMeta, Instruction};
+use solana_instruction::{error::InstructionError, AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_message::Message;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use solana_transaction::Transaction;
+use solana_transaction_error::TransactionError;
 
 pub const STARTING_LAMPORTS: u64 = 100_000_000_000;
 pub const SYSTEM_PROGRAM_ID: Pubkey =
     anchor_lang::solana_program::system_program::ID;
+
+/// Anchor maps `#[error_code]` variants to `InstructionError::Custom(6000 + index)`.
+/// The backend matches errors by name, so reject-path tests must verify the
+/// specific variant rather than just `is_err()`.
+pub fn assert_anchor_error(result: TransactionResult, expected: EnclzError) {
+    let failure = result.expect_err("expected transaction to fail");
+    let expected_code = expected as u32 + anchor_lang::error::ERROR_CODE_OFFSET;
+    match failure.err {
+        TransactionError::InstructionError(_, InstructionError::Custom(code)) => {
+            assert_eq!(
+                code, expected_code,
+                "expected {expected:?} (code {expected_code}), got code {code}"
+            );
+        }
+        other => panic!("expected Custom instruction error, got {other:?}"),
+    }
+}
 
 pub struct TestContext {
     pub svm: LiteSVM,

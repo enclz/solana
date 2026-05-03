@@ -8,6 +8,11 @@ use crate::state::{AgentWallet, GroupConfig, WhitelistEntry};
 use crate::util::fee::compute_fee;
 use crate::util::time::{needs_daily_reset, needs_hourly_reset};
 
+// `agent_index` is operator-supplied but safe: Anchor derives the agent_wallet
+// PDA from `[WALLET_SEED, group_config.key(), agent_index]` with `bump =
+// agent_wallet.bump` and rejects the transaction if the derived address does
+// not match the passed `agent_wallet` account. The same seeds are then reused
+// verbatim as the SPL transfer CPI signer.
 #[derive(Accounts)]
 #[instruction(amount: u64, expected_nonce: u64, agent_index: u8)]
 pub struct ExecuteTransferAccountConstraints<'info> {
@@ -36,9 +41,9 @@ pub struct ExecuteTransferAccountConstraints<'info> {
 
     #[account(
         mut,
-        constraint = from_token_account.owner == agent_wallet.key() @ EnclzError::Unauthorized,
-        constraint = from_token_account.mint == to_token_account.mint @ EnclzError::Unauthorized,
-        constraint = from_token_account.mint == protocol_fee_token_account.mint @ EnclzError::Unauthorized,
+        constraint = from_token_account.owner == agent_wallet.key() @ EnclzError::InvalidTokenAccount,
+        constraint = from_token_account.mint == to_token_account.mint @ EnclzError::InvalidMint,
+        constraint = from_token_account.mint == protocol_fee_token_account.mint @ EnclzError::InvalidMint,
     )]
     pub from_token_account: Box<Account<'info, TokenAccount>>,
 
@@ -54,7 +59,7 @@ pub struct ExecuteTransferAccountConstraints<'info> {
 
     #[account(
         mut,
-        constraint = protocol_fee_token_account.owner == group_config.protocol_fee_wallet @ EnclzError::Unauthorized,
+        constraint = protocol_fee_token_account.owner == group_config.protocol_fee_wallet @ EnclzError::InvalidFeeAccount,
     )]
     pub protocol_fee_token_account: Box<Account<'info, TokenAccount>>,
 
@@ -129,6 +134,10 @@ pub fn handle_execute_transfer(
             projected_used <= entry.approved_amount,
             EnclzError::WhitelistAmountExhausted
         );
+        // The require! above already rejects over-consumption, so this is
+        // effectively `projected_used == entry.approved_amount` — the
+        // exact-fill case where the cap is consumed and the entry should
+        // auto-void.
         should_void = projected_used >= entry.approved_amount;
     }
 
