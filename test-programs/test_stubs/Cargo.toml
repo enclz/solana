@@ -1,3 +1,6 @@
+# Cargo.lock is committed here because cargo-build-sbf resolves dependencies
+# independently from the workspace root, and the SBF linker requires a
+# deterministic lockfile. It is intentionally separate from the root Cargo.lock.
 [package]
 name = "test_stubs"
 version = "0.1.0"

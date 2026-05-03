@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constants::{WALLET_SEED, WHITELIST_SEED};
 use crate::errors::EnclzError;
 use crate::state::whitelist_entry::entry_type;
 use crate::state::{AgentWallet, GroupConfig, WhitelistEntry};
+use crate::util::cpi::invoke_protocol_cpi;
 use crate::util::fee::compute_fee;
 use crate::util::time::{needs_daily_reset, needs_hourly_reset};
 
@@ -32,7 +32,6 @@ pub struct ExecuteLendingOpAccountConstraints<'info> {
         mut,
         seeds = [WALLET_SEED, group_config.key().as_ref(), &[agent_index]],
         bump = agent_wallet.bump,
-        constraint = agent_wallet.group == group_config.key() @ EnclzError::Unauthorized,
     )]
     pub agent_wallet: Box<Account<'info, AgentWallet>>,
 
@@ -157,7 +156,7 @@ pub fn handle_execute_lending_op<'info>(
             token::transfer(cpi_context, fee)?;
         }
 
-        invoke_lending_cpi(
+        invoke_protocol_cpi(
             &context.accounts.lending_program,
             context.remaining_accounts,
             cpi_data,
@@ -168,7 +167,7 @@ pub fn handle_execute_lending_op<'info>(
         // fee out of the delta. Net (`redeemed - fee`) lands in the agent ATA.
         let pre_balance = context.accounts.agent_token_account.amount;
 
-        invoke_lending_cpi(
+        invoke_protocol_cpi(
             &context.accounts.lending_program,
             context.remaining_accounts,
             cpi_data,
@@ -206,32 +205,5 @@ pub fn handle_execute_lending_op<'info>(
         .checked_add(1)
         .ok_or(EnclzError::InvalidAmount)?;
 
-    Ok(())
-}
-
-fn invoke_lending_cpi<'info>(
-    lending_program: &UncheckedAccount<'info>,
-    remaining_accounts: &[AccountInfo<'info>],
-    data: Vec<u8>,
-    signer_seeds: &[&[&[u8]]],
-) -> Result<()> {
-    let mut metas: Vec<AccountMeta> = Vec::with_capacity(remaining_accounts.len());
-    let mut infos: Vec<AccountInfo<'info>> = Vec::with_capacity(remaining_accounts.len() + 1);
-    for account in remaining_accounts.iter() {
-        metas.push(if account.is_writable {
-            AccountMeta::new(*account.key, account.is_signer)
-        } else {
-            AccountMeta::new_readonly(*account.key, account.is_signer)
-        });
-        infos.push(account.clone());
-    }
-    infos.push(lending_program.to_account_info());
-
-    let ix = Instruction {
-        program_id: lending_program.key(),
-        accounts: metas,
-        data,
-    };
-    invoke_signed(&ix, &infos, signer_seeds)?;
     Ok(())
 }

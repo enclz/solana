@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constants::{WALLET_SEED, WHITELIST_SEED};
 use crate::errors::EnclzError;
 use crate::state::whitelist_entry::entry_type;
 use crate::state::{AgentWallet, GroupConfig, WhitelistEntry};
+use crate::util::cpi::invoke_protocol_cpi;
 use crate::util::fee::compute_fee;
 use crate::util::time::{needs_daily_reset, needs_hourly_reset};
 
@@ -28,7 +28,6 @@ pub struct ExecuteSwapAccountConstraints<'info> {
         mut,
         seeds = [WALLET_SEED, group_config.key().as_ref(), &[agent_index]],
         bump = agent_wallet.bump,
-        constraint = agent_wallet.group == group_config.key() @ EnclzError::Unauthorized,
     )]
     pub agent_wallet: Box<Account<'info, AgentWallet>>,
 
@@ -66,6 +65,8 @@ pub struct ExecuteSwapAccountConstraints<'info> {
 pub fn handle_execute_swap<'info>(
     context: Context<'info, ExecuteSwapAccountConstraints<'info>>,
     amount_in: u64,
+    // minimum_amount_out is part of the IDL ABI and surfaced to the backend,
+    // but not validated here. Jupiter enforces it inside the CPI via route_data.
     _minimum_amount_out: u64,
     expected_nonce: u64,
     agent_index: u8,
@@ -153,25 +154,12 @@ pub fn handle_execute_swap<'info>(
 
     // Step 11: Jupiter v6 CPI. Route legs flow through `remaining_accounts`
     // because v6 accepts a variable account list shaped by the route plan.
-    let mut metas: Vec<AccountMeta> = Vec::with_capacity(context.remaining_accounts.len());
-    let mut infos: Vec<AccountInfo<'info>> =
-        Vec::with_capacity(context.remaining_accounts.len() + 1);
-    for account in context.remaining_accounts.iter() {
-        metas.push(if account.is_writable {
-            AccountMeta::new(*account.key, account.is_signer)
-        } else {
-            AccountMeta::new_readonly(*account.key, account.is_signer)
-        });
-        infos.push(account.clone());
-    }
-    infos.push(context.accounts.jupiter_program.to_account_info());
-
-    let ix = Instruction {
-        program_id: context.accounts.jupiter_program.key(),
-        accounts: metas,
-        data: route_data,
-    };
-    invoke_signed(&ix, &infos, signer_seeds)?;
+    invoke_protocol_cpi(
+        &context.accounts.jupiter_program,
+        context.remaining_accounts,
+        route_data,
+        signer_seeds,
+    )?;
 
     // Step 12: counters reflect gross amount_in (fee + net both count against
     // the daily cap; type-2 entries are uncapped so no amount_used update).

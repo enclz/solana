@@ -3,18 +3,6 @@
     "allow": ["Bash(cargo:*)"]
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "input=$(cat); if echo \"$input\" | grep -q '\"skill\".*archive'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"An OpenSpec archive skill just completed. Now invoke the claude-md-management:revise-claude-md skill to update CLAUDE.md with learnings from this session.\"}}'; fi",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "startup|resume",
