@@ -8,3 +8,5 @@ test-ledger/
 *.log
 .DS_Store
 dist/
+sdk/src/enclz.ts
+sdk/src/enclz.json

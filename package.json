@@ -9,7 +9,13 @@
     "test:e2e": "anchor test --validator legacy",
     "deploy:devnet": "dotenv -- ts-node migrations/deploy.ts --devnet",
     "deploy:mainnet": "dotenv -- ts-node migrations/deploy.ts --mainnet",
-    "smoke:devnet": "dotenv -- ts-node --transpile-only tests/smoke.ts"
+    "smoke:devnet": "dotenv -- ts-node --transpile-only tests/smoke.ts",
+    "build:sdk": "node scripts/build-sdk.mjs",
+    "publish:sdk": "npm run build:sdk && cd sdk && npm publish --access public",
+    "idl:init:devnet": "dotenv -- anchor idl init --provider.cluster devnet --filepath target/idl/enclz.json 67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj",
+    "idl:upgrade:devnet": "dotenv -- anchor idl upgrade --provider.cluster devnet --filepath target/idl/enclz.json 67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj",
+    "idl:init:mainnet": "dotenv -- anchor idl init --provider.cluster mainnet --filepath target/idl/enclz.json 67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj",
+    "idl:upgrade:mainnet": "dotenv -- anchor idl upgrade --provider.cluster mainnet --filepath target/idl/enclz.json 67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1"
