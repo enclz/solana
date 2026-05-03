@@ -39,7 +39,10 @@ jobs:
           avm install ${{ env.ANCHOR_VERSION }}
           avm use ${{ env.ANCHOR_VERSION }}
       - name: anchor build
-        run: anchor build
+        # CI doesn't deploy, so it doesn't have the project's program-ID
+        # keypair; --ignore-keys lets the build proceed using declare_id!
+        # from source.
+        run: anchor build --ignore-keys
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -81,11 +84,19 @@ jobs:
         run: cargo test --package enclz
       - name: npm install
         run: npm ci
-      - name: Generate program keypair
+      - name: Generate program keypair and sync declare_id!
+        # `anchor test` deploys the program to the local validator, so the
+        # deploy keypair must match `declare_id!`. CI generates a fresh
+        # keypair (the production program-ID keypair lives off-CI) and
+        # patches the in-tree declare_id! + Anchor.toml to match.
         run: |
           solana-keygen new --no-bip39-passphrase --silent --outfile ~/.config/solana/id.json
           mkdir -p target/deploy
           solana-keygen new --no-bip39-passphrase --silent --outfile target/deploy/enclz-keypair.json
+          PUBKEY=$(solana-keygen pubkey target/deploy/enclz-keypair.json)
+          echo "Synced program ID: $PUBKEY"
+          sed -i -E "s/declare_id!\\(\"[^\"]+\"\\)/declare_id!(\"$PUBKEY\")/" programs/enclz/src/lib.rs
+          sed -i -E "s/^enclz = \"[^\"]+\"/enclz = \"$PUBKEY\"/" Anchor.toml
       - name: anchor test (legacy validator)
         run: anchor test --validator legacy
 
@@ -109,6 +120,15 @@ jobs:
           key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin --locked
+      - name: Download program build
+        # Integration tests under programs/enclz/tests/ load
+        # target/deploy/enclz.so via litesvm; tarpaulin can't produce the BPF
+        # binary itself (cargo-build-sbf is anchor's job), so reuse the
+        # build job's artifact.
+        uses: actions/download-artifact@v4
+        with:
+          name: program-build
+          path: target
       - name: Run tarpaulin
         run: |
           cargo tarpaulin \
@@ -140,7 +160,10 @@ jobs:
           cargo install cargo-audit --locked
           cargo install cargo-deny --locked
       - name: cargo audit
-        run: cargo audit --deny warnings
+        # Spec says "fail on critical CVE"; default behaviour exits non-zero
+        # on advisories. --deny warnings would also fail on yanked /
+        # unmaintained, which is too strict for this gate.
+        run: cargo audit
       - name: cargo deny check
         run: cargo deny check
 

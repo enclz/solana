@@ -41,24 +41,29 @@ function main() {
     );
     process.exit(1);
   }
-  if (!existsSync(IDL_COMMITTED)) {
-    console.error(
-      `missing committed ${IDL_COMMITTED} — run \`npm run idl:sync\` and commit`
+  const builtIdl = readJson(IDL_TARGET);
+
+  // The committed IDL is populated after the first successful devnet deploy
+  // (see openspec/changes/add-devnet-deploy-pipeline tasks 6.1/6.2). Until
+  // then, the IDL drift gate is dormant and only the error-map gate runs.
+  if (existsSync(IDL_COMMITTED)) {
+    const committedIdl = readJson(IDL_COMMITTED);
+    if (JSON.stringify(builtIdl) !== JSON.stringify(committedIdl)) {
+      console.error(
+        `FAIL: target/idl/enclz.json differs from idl/enclz.json — run \`npm run idl:sync\` and commit the result`
+      );
+      process.exit(1);
+    }
+    console.log("✓ idl/enclz.json in sync with target");
+  } else {
+    console.log(
+      `idl/enclz.json not yet committed — gate dormant until first deploy seeds it`
     );
-    process.exit(1);
   }
+
   if (!existsSync(ERROR_MAP_COMMITTED)) {
     console.error(
       `missing committed ${ERROR_MAP_COMMITTED} — run \`npm run idl:sync\` and commit`
-    );
-    process.exit(1);
-  }
-
-  const builtIdl = readJson(IDL_TARGET);
-  const committedIdl = readJson(IDL_COMMITTED);
-  if (JSON.stringify(builtIdl) !== JSON.stringify(committedIdl)) {
-    console.error(
-      `FAIL: target/idl/enclz.json differs from idl/enclz.json — run \`npm run idl:sync\` and commit the result`
     );
     process.exit(1);
   }
@@ -72,7 +77,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log("✓ idl/enclz.json + idl/error-map.json in sync with target");
+  console.log("✓ idl/error-map.json in sync with target");
 }
 
 main();
