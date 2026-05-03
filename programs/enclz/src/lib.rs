@@ -127,6 +127,42 @@ pub mod enclz {
             agent_index,
         )
     }
+
+    pub fn execute_swap<'info>(
+        context: Context<'info, ExecuteSwapAccountConstraints<'info>>,
+        amount_in: u64,
+        minimum_amount_out: u64,
+        expected_nonce: u64,
+        agent_index: u8,
+        route_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::execute_swap::handle_execute_swap(
+            context,
+            amount_in,
+            minimum_amount_out,
+            expected_nonce,
+            agent_index,
+            route_data,
+        )
+    }
+
+    pub fn execute_lending_op<'info>(
+        context: Context<'info, ExecuteLendingOpAccountConstraints<'info>>,
+        op_type: u8,
+        amount: u64,
+        expected_nonce: u64,
+        agent_index: u8,
+        cpi_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::execute_lending_op::handle_execute_lending_op(
+            context,
+            op_type,
+            amount,
+            expected_nonce,
+            agent_index,
+            cpi_data,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -288,6 +324,25 @@ mod tests {
         assert_eq!(DEFAULT_PER_TX_LIMIT, 1_000_000);
         assert_eq!(DEFAULT_HOURLY_CAP, 5);
         assert_eq!(PROTOCOL_FEE_BPS, 10);
+    }
+
+    #[test]
+    fn jupiter_v6_program_id_matches_canonical_address() {
+        // Canonical Jupiter Aggregator v6 deployment. The orchestrator can
+        // override per-group via the type-2 whitelist entry, but this default
+        // is what the backend uses at `initialize_group` time.
+        let expected: Pubkey = "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
+            .parse()
+            .expect("canonical Jupiter v6 pubkey must parse");
+        assert_eq!(JUPITER_V6_PROGRAM_ID, expected);
+    }
+
+    #[test]
+    fn lending_op_type_discriminants_are_stable() {
+        // Backend dispatches `/v1/deposit` → 0, `/v1/withdraw` → 1; these
+        // values are part of the on-chain ABI and must not move.
+        assert_eq!(instructions::execute_lending_op::op_type::DEPOSIT, 0);
+        assert_eq!(instructions::execute_lending_op::op_type::WITHDRAW, 1);
     }
 
     #[test]

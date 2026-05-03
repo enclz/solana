@@ -1,17 +1,17 @@
 ## 1. execute_swap implementation
 
-- [ ] 1.1 Create `programs/enclz/src/instructions/execute_swap.rs` with `Accounts` struct: `backend_operator` (signer), `group_config` (has_one = backend_operator), `agent_wallet` (writable), `from_token_account` (mut, owner == agent_wallet, mint == USDC), `to_token_account` (mut), `whitelist_entry` (seeds-checked, entry_type == 2 asserted in handler), `protocol_fee_token_account` (mut, owner == group_config.protocol_fee_wallet, mint == USDC), `jupiter_program`, `token_program`, `system_program`
-- [ ] 1.2 Implement handler — steps matching execute_transfer order: nonce → increment → time resets → per_tx / daily / hourly → whitelist type-2 assert → fee calc → fee transfer CPI → Jupiter v6 CPI via remaining_accounts → counter update
-- [ ] 1.3 Wire `execute_swap` entry point in `lib.rs`
-- [ ] 1.4 Add constant `JUPITER_V6_PROGRAM_ID: Pubkey` to `constants.rs`
+- [x] 1.1 Create `programs/enclz/src/instructions/execute_swap.rs` with `Accounts` struct: `backend_operator` (signer), `group_config` (has_one = backend_operator), `agent_wallet` (writable), `from_token_account` (mut, owner == agent_wallet, mint == fee mint), `to_token_account` (mut), `whitelist_entry` (seeds-checked, entry_type == 2 asserted in handler), `protocol_fee_token_account` (mut, owner == group_config.protocol_fee_wallet, mint == from mint), `jupiter_program`, `token_program`, `system_program`
+- [x] 1.2 Implement handler — steps matching execute_transfer order: nonce → increment → time resets → per_tx / daily / hourly → whitelist type-2 assert → fee calc → fee transfer CPI → Jupiter v6 CPI via remaining_accounts → counter update
+- [x] 1.3 Wire `execute_swap` entry point in `lib.rs`
+- [x] 1.4 Add constant `JUPITER_V6_PROGRAM_ID: Pubkey` to `constants.rs`
 
 ## 2. execute_lending_op implementation
 
-- [ ] 2.1 Create `programs/enclz/src/instructions/execute_lending_op.rs` with `Accounts` struct: `backend_operator` (signer), `group_config` (has_one = backend_operator), `agent_wallet` (writable), `agent_token_account` (mut, owner == agent_wallet), `whitelist_entry` (seeds-checked, entry_type == 2 asserted in handler), `protocol_fee_token_account` (mut, owner == group_config.protocol_fee_wallet), `lending_program`, `token_program`, `system_program`
-- [ ] 2.2 Implement deposit path (op_type == 0): nonce → increment → time resets → limits → whitelist type-2 → fee calc → fee CPI → lending deposit CPI (remaining_accounts) → counter update
-- [ ] 2.3 Implement withdraw path (op_type == 1): nonce → increment → time resets → limits → whitelist type-2 → lending redeem CPI → fee calc from redeemed → fee CPI → counter update
-- [ ] 2.4 Reject unknown op_type with `InvalidAmount`
-- [ ] 2.5 Wire `execute_lending_op` entry point in `lib.rs`
+- [x] 2.1 Create `programs/enclz/src/instructions/execute_lending_op.rs` with `Accounts` struct: `backend_operator` (signer), `group_config` (has_one = backend_operator), `agent_wallet` (writable), `agent_token_account` (mut, owner == agent_wallet), `whitelist_entry` (seeds-checked, entry_type == 2 asserted in handler), `protocol_fee_token_account` (mut, owner == group_config.protocol_fee_wallet), `lending_program`, `token_program`, `system_program`
+- [x] 2.2 Implement deposit path (op_type == 0): nonce → increment → time resets → limits → whitelist type-2 → fee calc → fee CPI → lending deposit CPI (remaining_accounts) → counter update
+- [x] 2.3 Implement withdraw path (op_type == 1): nonce → increment → time resets → limits → whitelist type-2 → lending redeem CPI → fee calc from redeemed → fee CPI → counter update
+- [x] 2.4 Reject unknown op_type with `InvalidAmount`
+- [x] 2.5 Wire `execute_lending_op` entry point in `lib.rs`
 
 ## 3. Tests — execute_swap
 
