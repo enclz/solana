@@ -4,6 +4,7 @@ pub mod constants;
 pub mod errors;
 pub mod instructions;
 pub mod state;
+pub mod util;
 
 pub use constants::*;
 pub use errors::*;
@@ -111,6 +112,20 @@ pub mod enclz {
         target_address: Pubkey,
     ) -> Result<()> {
         instructions::remove_from_whitelist::handle_remove_from_whitelist(context, target_address)
+    }
+
+    pub fn execute_transfer(
+        context: Context<ExecuteTransferAccountConstraints>,
+        amount: u64,
+        expected_nonce: u64,
+        agent_index: u8,
+    ) -> Result<()> {
+        instructions::execute_transfer::handle_execute_transfer(
+            context,
+            amount,
+            expected_nonce,
+            agent_index,
+        )
     }
 }
 
