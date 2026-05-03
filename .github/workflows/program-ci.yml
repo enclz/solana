@@ -44,10 +44,16 @@ jobs:
         # from source.
         run: anchor build --ignore-keys
       - name: Upload artifacts
+        # Both .so files are listed so upload-artifact's LCA pruning keeps
+        # them at the artifact root (enclz.so, test_stubs.so). Downstream
+        # jobs download with `path: target/deploy` to land them at the
+        # location the test harness expects.
         uses: actions/upload-artifact@v4
         with:
           name: program-build
-          path: target/deploy/enclz.so
+          path: |
+            target/deploy/enclz.so
+            target/deploy/test_stubs.so
           retention-days: 7
 
   test:
@@ -77,6 +83,14 @@ jobs:
           cargo install --git https://github.com/solana-foundation/anchor avm --locked
           avm install ${{ env.ANCHOR_VERSION }}
           avm use ${{ env.ANCHOR_VERSION }}
+      - name: Download program build
+        # programs/enclz/tests/common/mod.rs loads target/deploy/enclz.so and
+        # target/deploy/test_stubs.so via litesvm. cargo's host build doesn't
+        # produce those — they come from `cargo build-sbf` in the build job.
+        uses: actions/download-artifact@v4
+        with:
+          name: program-build
+          path: target/deploy
       - name: cargo test
         run: cargo test --package enclz
       - name: npm install
@@ -129,13 +143,15 @@ jobs:
           tool: cargo-tarpaulin
       - name: Download program build
         # Integration tests under programs/enclz/tests/ load
-        # target/deploy/enclz.so via litesvm; tarpaulin can't produce the BPF
-        # binary itself (cargo-build-sbf is anchor's job), so reuse the
-        # build job's artifact.
+        # target/deploy/{enclz,test_stubs}.so via litesvm; tarpaulin can't
+        # produce the BPF binaries itself (cargo-build-sbf is anchor's job),
+        # so reuse the build job's artifact. The artifact stores .so files at
+        # its root, so download into target/deploy to land them where the
+        # tests expect.
         uses: actions/download-artifact@v4
         with:
           name: program-build
-          path: target
+          path: target/deploy
       - name: Run tarpaulin
         run: |
           cargo tarpaulin \
