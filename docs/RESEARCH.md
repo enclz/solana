@@ -67,6 +67,7 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 | Project | Hackathon | Prize | Core approach | Gap vs Enclz |
 |---|---|---|---|---|
 | **Latinum Agentic Commerce** | Breakout 2025 | **1st AI — $25k** | MCP-compatible wallet, agents pay for services | No whitelist/spend limits, no on-chain enforcement |
+| **Mercantill** | Cypherpunk 2025 | **4th Stablecoins — $10k** | Squads Grid-based banking infra for AI agents: audit trails, programmable spending limits, multi-sig controls | Wraps Squads multisig (coordination overhead, third-party stack) instead of native Anchor PDA policy; no TTL + amount-capped auto-void; no swap/yield extension |
 | **Agent-Cred** | Cypherpunk 2025 | None | AI agent payment infra, hotkey/coldkey arch | No on-chain enforcement, SDK required |
 | **AgentVault** | Cypherpunk 2025 | None | Non-custodial trading agent control plane, idempotency keys, kill-switch | Trading-focused, application-layer controls |
 | **Blockpal Smart Delegation** | Breakout 2025 | None | Delegation + permission guardrails for agents | Delegation model not policy enforcement |
@@ -74,11 +75,11 @@ No hard no-go triggers. Openfort is a real on-chain enforcement competitor — d
 | **Project Plutus** | Breakout 2025 | **2nd AI — $20k** | AI agent deployment + management platform | Platform play, not payment enforcement |
 | **AI Economy Protocol** | Cypherpunk 2025 | None | Autonomous agent marketplace with payments | Agent-to-agent marketplace, no policy layer |
 
-**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a dedicated Anchor program with whitelist PDAs + nonce + per-agent policy. Enclz's core mechanism is novel in this dataset.
+**Key finding:** No hackathon project in the dataset implements on-chain spend enforcement via a *dedicated Anchor program* with whitelist PDAs + nonce + per-agent policy. Mercantill comes closest pitch-wise but rides on Squads Grid (multisig wrapper); Enclz's native PDA mechanism is novel in this dataset.
 
 ### Crowdedness
 
-"Solana AI Agent Infrastructure" cluster: **325** (very crowded). But search similarity scores for Enclz's specific angle (on-chain policy enforcement) are low (0.03–0.05) — the niche is open within a crowded category.
+**Crowdedness score: 88/100 (highly crowded).** "Solana AI Agent Infrastructure" cluster `v1-c14`: **325 projects — the #1 most populated of 30 ML-derived clusters** across the entire 5,404-project corpus. Cluster win rate 14/325 = 4.3% (roughly the hackathon-wide average — contested, not saturated to death). Search similarity scores for Enclz's specific angle (on-chain policy enforcement) are low (0.03–0.06) — the *mechanism* is open within a crowded *category*. The threat is Mercantill: same elevator pitch, Cypherpunk 2025 prizewinner, must be out-differentiated on the native-PDA / TTL-auto-void / swap-extension axes.
 
 ### Winner Gap Analysis
 
