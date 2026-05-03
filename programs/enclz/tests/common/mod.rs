@@ -82,7 +82,7 @@ impl TestContext {
         so_path.push("target/deploy/test_stubs.so");
         let program_bytes = std::fs::read(&so_path).unwrap_or_else(|error| {
             panic!(
-                "expected stub program at {} (run `cargo build-sbf --manifest-path programs/test_stubs/Cargo.toml`): {error}",
+                "expected stub program at {} (run `cargo build-sbf --manifest-path test-programs/test_stubs/Cargo.toml`): {error}",
                 so_path.display()
             )
         });
