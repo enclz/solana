@@ -85,6 +85,7 @@ In the cloud environment configuration, set:
 
 - `QUICKNODE_DEVNET_RPC_URL` — same as local
 - `SOLANA_DEVNET_DEPLOYER_KEYPAIR` — JSON byte array (no quotes), e.g. `[12,34,...,99]`. Add `SOLANA_TESTNET_DEPLOYER_KEYPAIR` / `SOLANA_MAINNET_DEPLOYER_KEYPAIR` analogously if/when needed.
+- `SOLANA_PROGRAM_ID_KEYPAIR` — JSON byte array of the local `target/deploy/enclz-keypair.json`. Required for `npm run test:e2e` in the cloud, since `anchor test` deploys the program at this keypair's pubkey and it must match `declare_id!` in `lib.rs`. Without it the hook skips silently and only `cargo test` works.
 
 And in the setup script, install Solana CLI + Anchor:
 
