@@ -34,6 +34,10 @@ allow = [
 ]
 exceptions = []
 
+# Skip license enforcement for our own workspace crates (marked `publish = false`).
+# Third-party deps still go through the allow list above.
+private = { ignore = true }
+
 [bans]
 multiple-versions = "warn"
 wildcards = "warn"
