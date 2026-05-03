@@ -57,12 +57,12 @@
 
 ## 6. Integration tests
 
-- [x] 6.1 Mocha: end-to-end against `solana-test-validator` — provision group + agent, fund agent ATA, register external whitelist with $5 cap, execute five $1 transfers totaling $5, assert PDA closed, attempt 6th transfer → fails. Implemented in `tests/execute_transfer.spec.ts` ("end-to-end: external whitelist with $5 cap..."). Running `anchor test --validator legacy` requires a deployer keypair whose pubkey matches the source `declare_id!`; that secret lives in the developer's local `target/deploy/enclz-keypair.json` (gitignored), so the e2e suite is verified locally rather than in cloud sessions where the keypair is regenerated on each `cargo build-sbf`.
+- [x] 6.1 Mocha: end-to-end against `solana-test-validator` — provision group + agent, fund agent ATA, register external whitelist with $5 cap, execute five $1 transfers totaling $5, assert PDA closed, attempt 6th transfer → fails. Implemented in `tests/execute_transfer.spec.ts` ("end-to-end: external whitelist with $5 cap...") and verified locally via `npm run test:e2e`. The program keypair matching `declare_id!` must be present at `target/deploy/enclz-keypair.json`; that file is gitignored, so cloud sessions need it materialized out-of-band before running e2e.
 - [x] 6.2 Mocha: replay protection — submit two txs with same nonce, assert second fails — `tests/execute_transfer.spec.ts` ("nonce replay: ...")
 
 ## 7. Verification
 
 - [x] 7.1 `cargo test --package enclz`: 77 tests green (26 lib + 27 execute_transfer + 24 owner_instructions)
-- [ ] 7.2 `anchor test`: requires local program keypair; documented in 6.1
+- [x] 7.2 `anchor test --validator legacy`: 4 mocha specs green (2 new `execute_transfer` + 2 pre-existing `owner_instructions`)
 - [ ] 7.3 Coverage on `execute_transfer.rs` ≥ 90% — every reject branch and the auto-void path are covered by name-mapped LiteSVM tests; explicit coverage tooling (`cargo-llvm-cov`) not yet wired into CI
 - [x] 7.4 Manual review: walked steps 1–12 against handler source, line by line
