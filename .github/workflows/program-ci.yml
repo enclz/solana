@@ -88,11 +88,15 @@ jobs:
         # `anchor test` deploys the program to the local validator, so the
         # deploy keypair must match `declare_id!`. CI generates a fresh
         # keypair (the production program-ID keypair lives off-CI) and
-        # patches the in-tree declare_id! + Anchor.toml to match.
+        # patches the in-tree declare_id! + Anchor.toml to match. The build
+        # cache may already contain a keypair from the build job — reuse it
+        # if present so the .so artifact stays consistent.
         run: |
           solana-keygen new --no-bip39-passphrase --silent --outfile ~/.config/solana/id.json
           mkdir -p target/deploy
-          solana-keygen new --no-bip39-passphrase --silent --outfile target/deploy/enclz-keypair.json
+          if [ ! -f target/deploy/enclz-keypair.json ]; then
+            solana-keygen new --no-bip39-passphrase --silent --outfile target/deploy/enclz-keypair.json
+          fi
           PUBKEY=$(solana-keygen pubkey target/deploy/enclz-keypair.json)
           echo "Synced program ID: $PUBKEY"
           sed -i -E "s/declare_id!\\(\"[^\"]+\"\\)/declare_id!(\"$PUBKEY\")/" programs/enclz/src/lib.rs
@@ -119,7 +123,13 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --locked
+        # Latest cargo-tarpaulin pulls cargo-platform 0.3.3 which requires
+        # rustc 1.91; we pin rustc to 1.89 (matching Anchor 1.0.1's tested
+        # toolchain). taiki-e/install-action downloads a pre-built binary so
+        # local rustc compatibility is irrelevant.
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
       - name: Download program build
         # Integration tests under programs/enclz/tests/ load
         # target/deploy/enclz.so via litesvm; tarpaulin can't produce the BPF

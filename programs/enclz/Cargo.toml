@@ -3,6 +3,11 @@ name = "enclz"
 version = "0.1.0"
 description = "Enclz on-chain spend-policy enforcement program"
 edition = "2021"
+# Internal crate — never published to crates.io. Marking it `publish = false`
+# (combined with `licenses.private.ignore = true` in deny.toml) lets
+# `cargo deny check` skip the license gate for our own workspace member
+# without forcing a license choice that the project hasn't made yet.
+publish = false
 
 [lib]
 crate-type = ["cdylib", "lib"]
