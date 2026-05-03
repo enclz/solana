@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["programs/*"]
+members = ["programs/enclz", "test-programs/test_stubs"]
 
 [profile.release]
 overflow-checks = true

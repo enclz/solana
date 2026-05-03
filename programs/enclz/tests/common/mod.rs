@@ -71,6 +71,38 @@ impl TestContext {
         }
     }
 
+    /// Load the test_stubs program into LiteSVM under the given pubkey. Used by
+    /// `execute_swap` / `execute_lending_op` happy-path tests where the stub
+    /// stands in for Jupiter / Kamino. Called once per test that needs a real
+    /// CPI target.
+    pub fn add_stub_program(&mut self, program_id: &Pubkey) {
+        let mut so_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        so_path.pop();
+        so_path.pop();
+        so_path.push("target/deploy/test_stubs.so");
+        let program_bytes = std::fs::read(&so_path).unwrap_or_else(|error| {
+            panic!(
+                "expected stub program at {} (run `cargo build-sbf --manifest-path programs/test_stubs/Cargo.toml`): {error}",
+                so_path.display()
+            )
+        });
+        self.svm.add_program(*program_id, &program_bytes).unwrap();
+    }
+
+    /// Read-modify-write helper for `AgentWallet`. Tests use this to seed
+    /// preconditions like `spent_today` / `tx_count_this_hour` without going
+    /// through `update_agent_limits`.
+    pub fn rewrite_agent<F: FnOnce(&mut AgentWallet)>(&mut self, agent_pda: &Pubkey, mutate: F) {
+        let mut account = self.fetch_account(agent_pda);
+        let mut agent: AgentWallet =
+            AgentWallet::try_deserialize(&mut account.data.as_slice()).unwrap();
+        mutate(&mut agent);
+        let mut buffer = Vec::with_capacity(account.data.len());
+        anchor_lang::AccountSerialize::try_serialize(&mut agent, &mut buffer).unwrap();
+        account.data = buffer;
+        self.svm.set_account(*agent_pda, account).unwrap();
+    }
+
     pub fn airdrop(&mut self, recipient: &Pubkey, lamports: u64) {
         self.svm.airdrop(recipient, lamports).unwrap();
     }
@@ -412,6 +444,94 @@ pub fn execute_transfer_instruction(
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
+        data,
+    }
+}
+
+pub fn execute_swap_instruction(
+    program_id: &Pubkey,
+    backend_operator: &Pubkey,
+    group_config: &Pubkey,
+    agent_wallet: &Pubkey,
+    from_token_account: &Pubkey,
+    to_token_account: &Pubkey,
+    whitelist_entry: &Pubkey,
+    protocol_fee_token_account: &Pubkey,
+    jupiter_program: &Pubkey,
+    amount_in: u64,
+    minimum_amount_out: u64,
+    expected_nonce: u64,
+    agent_index: u8,
+    route_data: Vec<u8>,
+    remaining_accounts: Vec<AccountMeta>,
+) -> Instruction {
+    let data = enclz::instruction::ExecuteSwap {
+        amount_in,
+        minimum_amount_out,
+        expected_nonce,
+        agent_index,
+        route_data,
+    }
+    .data();
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*backend_operator, true),
+        AccountMeta::new_readonly(*group_config, false),
+        AccountMeta::new(*agent_wallet, false),
+        AccountMeta::new(*from_token_account, false),
+        AccountMeta::new(*to_token_account, false),
+        AccountMeta::new_readonly(*whitelist_entry, false),
+        AccountMeta::new(*protocol_fee_token_account, false),
+        AccountMeta::new_readonly(*jupiter_program, false),
+        AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+    ];
+    accounts.extend(remaining_accounts);
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+pub fn execute_lending_op_instruction(
+    program_id: &Pubkey,
+    backend_operator: &Pubkey,
+    group_config: &Pubkey,
+    agent_wallet: &Pubkey,
+    agent_token_account: &Pubkey,
+    whitelist_entry: &Pubkey,
+    protocol_fee_token_account: &Pubkey,
+    lending_program: &Pubkey,
+    op_type: u8,
+    amount: u64,
+    expected_nonce: u64,
+    agent_index: u8,
+    cpi_data: Vec<u8>,
+    remaining_accounts: Vec<AccountMeta>,
+) -> Instruction {
+    let data = enclz::instruction::ExecuteLendingOp {
+        op_type,
+        amount,
+        expected_nonce,
+        agent_index,
+        cpi_data,
+    }
+    .data();
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*backend_operator, true),
+        AccountMeta::new_readonly(*group_config, false),
+        AccountMeta::new(*agent_wallet, false),
+        AccountMeta::new(*agent_token_account, false),
+        AccountMeta::new_readonly(*whitelist_entry, false),
+        AccountMeta::new(*protocol_fee_token_account, false),
+        AccountMeta::new_readonly(*lending_program, false),
+        AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+    ];
+    accounts.extend(remaining_accounts);
+    Instruction {
+        program_id: *program_id,
+        accounts,
         data,
     }
 }
