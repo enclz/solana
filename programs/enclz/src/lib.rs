@@ -13,6 +13,18 @@ pub use state::*;
 
 declare_id!("67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj");
 
+#[cfg(not(feature = "no-entrypoint"))]
+solana_security_txt::security_txt! {
+    name: "Enclz",
+    project_url: "https://github.com/enclz/solana",
+    contacts: "email:security@enclz.dev",
+    policy: "https://github.com/enclz/solana/blob/main/SECURITY.md",
+    preferred_languages: "en",
+    source_code: "https://github.com/enclz/solana",
+    source_release: "v0.1.0",
+    auditors: "None"
+}
+
 #[program]
 pub mod enclz {
     use super::*;
