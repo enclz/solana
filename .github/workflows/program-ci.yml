@@ -43,6 +43,15 @@ jobs:
         # keypair; --ignore-keys lets the build proceed using declare_id!
         # from source.
         run: anchor build --ignore-keys
+      - name: Build test_stubs program
+        # `anchor build` only builds entries declared in Anchor.toml's
+        # `[programs.*]` blocks. test_stubs is a workspace member used as a
+        # CPI stand-in by litesvm tests (see programs/enclz/tests/common
+        # /mod.rs::add_stub_program), and must be built explicitly. Running
+        # cargo-build-sbf from the workspace root with `--manifest-path`
+        # places the artifact at workspace `target/deploy/test_stubs.so`,
+        # alongside enclz.so.
+        run: cargo build-sbf --manifest-path test-programs/test_stubs/Cargo.toml
       - name: Upload artifacts
         # Both .so files are listed so upload-artifact's LCA pruning keeps
         # them at the artifact root (enclz.so, test_stubs.so). Downstream
