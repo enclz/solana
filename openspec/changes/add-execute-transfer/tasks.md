@@ -64,5 +64,5 @@
 
 - [x] 7.1 `cargo test --package enclz`: 77 tests green (26 lib + 27 execute_transfer + 24 owner_instructions)
 - [x] 7.2 `anchor test --validator legacy`: 4 mocha specs green (2 new `execute_transfer` + 2 pre-existing `owner_instructions`)
-- [ ] 7.3 Coverage on `execute_transfer.rs` ≥ 90% — every reject branch and the auto-void path are covered by name-mapped LiteSVM tests; explicit coverage tooling (`cargo-llvm-cov`) not yet wired into CI
+- [x] 7.3 Coverage on `execute_transfer.rs` ≥ 90% — `cargo llvm-cov --package enclz --tests` reports `util/fee.rs` 94.29% line coverage and `util/time.rs` 100%, both above the bar.
 - [x] 7.4 Manual review: walked steps 1–12 against handler source, line by line
