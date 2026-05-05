@@ -1,6 +1,6 @@
 [package]
 name = "enclz"
-version = "0.1.0"
+version = "0.1.1"
 description = "Enclz on-chain spend-policy enforcement program"
 edition = "2021"
 # Internal crate — never published to crates.io. Marking it `publish = false`
