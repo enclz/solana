@@ -66,14 +66,7 @@ All three derive `InitSpace`. Always size accounts as `8 + Foo::INIT_SPACE` — 
 3. If a task contradicts `design.md` or the spec, the spec wins — patch `tasks.md`.
 4. Skills `openspec-explore`, `openspec-propose`, `openspec-apply-change`, `openspec-archive-change` exist but are optional helpers; the directory structure is the protocol.
 
-Status of active changes (archived ones live in `openspec/changes/archive/`):
-
-| Change | State |
-|---|---|
-| `add-devnet-deploy-pipeline` | Not started — CI, hardening, devnet deploy |
-| `add-idl-publishing` | Not started — @enclz/sdk + on-chain IDL publication |
-
-`openspec/changes/archive/` is for completed changes; once a change is fully implemented and shipped, archive it there.
+No active OpenSpec changes are open right now — every proposal so far has been implemented and moved to `openspec/changes/archive/`. The capability specs in `openspec/specs/` are the current source of truth for behaviour. Start a new change directory under `openspec/changes/<name>/` when you take on the next piece of scope.
 
 ### Local vs. cloud development environment
 
@@ -109,6 +102,15 @@ The skill's "Do the whole thing" / "no placeholder tests" rules are load-bearing
 - **`docs/` is a submodule of `enclz/.github` pinned to `branch = main`** (see `.gitmodules`). The recorded SHA is bumped per commit — `branch = main` only tells `--remote` which ref to advance to.
   - **Pushing branches requires SSH remote.** Clone defaults to HTTPS but the user's git is SSH-only; switch with `git -C docs remote set-url origin git@github.com:enclz/.github.git` before `git push`.
   - **After a docs PR merges**, do *not* run `git submodule update --remote --merge` while a feature branch is checked out in the submodule — it produces a local merge commit. Instead: `git -C docs checkout main && git -C docs pull --ff-only origin main && git -C docs branch -D <feature> && git -C docs push origin --delete <feature>`, then `git add docs && git commit` in the parent repo.
+- **Local PATH for anchor + sbf tools.** Neither `~/.cargo/bin/anchor` nor `~/.local/share/solana/install/active_release/bin/` is on PATH in a fresh shell. Export both before any `anchor build` / `cargo build-sbf` / `npm run build:sdk` / `npm run deploy:*`: `export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"`.
+- **`anchor deploy --provider.cluster devnet` ignores `[provider.devnet].wallet`.** It reads the default `[provider]` block and signs with `~/.config/solana/id.json`. The per-cluster wallet entries in `Anchor.toml` are aspirational — set `ANCHOR_WALLET=...` for the deploy step if you need a different signer. The actual upgrade authority is whichever key signed the first deploy.
+
+## Versioning and IDL pipeline
+
+- **Version is single-sourced from `programs/enclz/Cargo.toml` `version`.** Flow: Cargo → IDL `metadata.version` (via `anchor build`) → `sdk/package.json` (via `scripts/build-sdk.mjs`). Don't hand-edit `sdk/package.json` — it's regenerated.
+- **`security_txt.source_release` in `programs/enclz/src/lib.rs:24` is NOT auto-synced.** It's compiled into the `.so`. Bump it in the same commit as the Cargo version, then redeploy.
+- **`scripts/build-sdk.mjs` rebuilds when `target/idl/enclz.json` is older than any program source.** The earlier existence-only check shipped a stale IDL once (`execute_swap` + `execute_lending_op` missing for two commits).
+- **`scripts/check-idl-coverage.mjs` runs in CI right after `anchor build`.** If it fails ("handlers absent from IDL"), 9× out of 10 you just need to re-run `anchor build` — Anchor 1.x does not actually choke on `<'info>` generics, despite folklore.
 
 ## Git conventions
 
