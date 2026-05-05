@@ -43,6 +43,11 @@ jobs:
         # keypair; --ignore-keys lets the build proceed using declare_id!
         # from source.
         run: anchor build --ignore-keys
+      - name: Verify IDL covers every program instruction
+        # Anchor's macro silently drops handlers it can't parse; we shipped a
+        # stale IDL once where two instructions were absent. This gate makes
+        # the build fail fast if target/idl/enclz.json drifts from lib.rs.
+        run: node scripts/check-idl-coverage.mjs
       - name: Build test_stubs program
         # `anchor build` only builds entries declared in Anchor.toml's
         # `[programs.*]` blocks. test_stubs is a workspace member used as a

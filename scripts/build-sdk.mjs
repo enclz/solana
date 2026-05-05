@@ -2,7 +2,9 @@
 import { execSync } from "node:child_process";
 import {
   existsSync,
+  readdirSync,
   readFileSync,
+  statSync,
   writeFileSync,
   copyFileSync,
   mkdirSync,
@@ -14,12 +16,47 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const idlSrc = join(root, "target/idl/enclz.json");
 const typesSrc = join(root, "target/types/enclz.ts");
+const programSrcDir = join(root, "programs/enclz/src");
+const programManifest = join(root, "programs/enclz/Cargo.toml");
 const sdkSrcDir = join(root, "sdk/src");
 const sdkDir = join(root, "sdk");
 
-// Step 1: Run anchor build if artifacts are missing
-if (!existsSync(idlSrc) || !existsSync(typesSrc)) {
-  console.log("Artifacts missing — running anchor build...");
+// Step 1: Run anchor build when artifacts are missing OR stale.
+// Staleness is "any program source is newer than target/idl/enclz.json" —
+// existsSync alone shipped a stale IDL once already (execute_swap +
+// execute_lending_op were absent for two commits because the cached file
+// passed the existence check).
+function newestMtime(path) {
+  const stat = statSync(path);
+  if (!stat.isDirectory()) return stat.mtimeMs;
+  let max = stat.mtimeMs;
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const child = join(path, entry.name);
+    const childMax = newestMtime(child);
+    if (childMax > max) max = childMax;
+  }
+  return max;
+}
+
+let needsBuild = !existsSync(idlSrc) || !existsSync(typesSrc);
+let staleReason = null;
+if (!needsBuild) {
+  const idlMtime = statSync(idlSrc).mtimeMs;
+  const srcMtime = newestMtime(programSrcDir);
+  const manifestMtime = statSync(programManifest).mtimeMs;
+  const newestSource = Math.max(srcMtime, manifestMtime);
+  if (newestSource > idlMtime) {
+    needsBuild = true;
+    staleReason = "program source newer than target/idl/enclz.json";
+  }
+}
+
+if (needsBuild) {
+  console.log(
+    staleReason
+      ? `Artifacts stale (${staleReason}) — running anchor build...`
+      : "Artifacts missing — running anchor build...",
+  );
   execSync("anchor build", { cwd: root, stdio: "inherit" });
 }
 
