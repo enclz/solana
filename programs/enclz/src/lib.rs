@@ -11,7 +11,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj");
+declare_id!("45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
@@ -21,7 +21,7 @@ solana_security_txt::security_txt! {
     policy: "https://github.com/enclz/solana/blob/main/SECURITY.md",
     preferred_languages: "en",
     source_code: "https://github.com/enclz/solana",
-    source_release: "v0.1.1",
+    source_release: "v0.1.2",
     auditors: "None"
 }
 

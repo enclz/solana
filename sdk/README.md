@@ -37,7 +37,7 @@ const program = new Program(idl!, provider);
 ## Program ID
 
 ```
-67i3uY4gZaidynKa8XbNW569qACSVCebwKnLpNYVtWjj
+45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW
 ```
 
 ## Publishing
