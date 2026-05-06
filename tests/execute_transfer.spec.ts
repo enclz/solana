@@ -112,6 +112,7 @@ async function provisionFleet(
   );
   await program.methods
     .initializeGroup(
+      padDisplayName("transfer-test"),
       backendOperator.publicKey,
       protocolFeeWalletOwner.publicKey,
       dexRouter

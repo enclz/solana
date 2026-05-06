@@ -213,6 +213,7 @@ async function main(): Promise<void> {
   );
   const initSig = await program.methods
     .initializeGroup(
+      padDisplayName("smoke-test-group"),
       backendOperator.publicKey,
       protocolFeeWalletOwner.publicKey,
       dexRouter

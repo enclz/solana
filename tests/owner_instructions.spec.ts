@@ -88,12 +88,14 @@ async function airdrop(
 async function provisionGroup(
   program: Program<Enclz>,
   provider: anchor.AnchorProvider,
-  owner: Keypair
+  owner: Keypair,
+  groupName: number[] = padDisplayName("acme-trading-desk")
 ): Promise<{
   group: PublicKey;
   backendOperator: PublicKey;
   protocolFeeWallet: PublicKey;
   dexRouter: PublicKey;
+  groupName: number[];
 }> {
   const backendOperator = Keypair.generate().publicKey;
   const protocolFeeWallet = Keypair.generate().publicKey;
@@ -105,7 +107,7 @@ async function provisionGroup(
     dexRouter
   );
   await program.methods
-    .initializeGroup(backendOperator, protocolFeeWallet, dexRouter)
+    .initializeGroup(groupName, backendOperator, protocolFeeWallet, dexRouter)
     .accounts({
       owner: owner.publicKey,
       groupConfig: group,
@@ -114,7 +116,7 @@ async function provisionGroup(
     })
     .signers([owner])
     .rpc();
-  return { group, backendOperator, protocolFeeWallet, dexRouter };
+  return { group, backendOperator, protocolFeeWallet, dexRouter, groupName };
 }
 
 async function addAgent(
@@ -173,7 +175,7 @@ describe("enclz owner instructions (mocha + anchor)", function () {
   });
 
   it("provisions a group, two agents, then renews and removes a merchant entry", async () => {
-    const { group, backendOperator, protocolFeeWallet, dexRouter } =
+    const { group, backendOperator, protocolFeeWallet, dexRouter, groupName } =
       await provisionGroup(program, provider, owner);
     const groupAfterInit = await program.account.groupConfig.fetch(group);
     expect(groupAfterInit.owner.equals(owner.publicKey)).to.equal(true);
@@ -184,6 +186,7 @@ describe("enclz owner instructions (mocha + anchor)", function () {
       true
     );
     expect(groupAfterInit.agentCount).to.equal(0);
+    expect(Array.from(groupAfterInit.groupName)).to.deep.equal(groupName);
 
     const [routerEntryPda] = findWhitelistPda(
       program.programId,
