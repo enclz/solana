@@ -37,14 +37,14 @@
 
 - [x] 5.1 `docs/SPECIFICATION.md` `GroupConfig` field listing now includes `group_name: [u8; 32]`; `initialize_group` Args block now lists `group_name` first
 - [x] 5.2 No hardcoded `97`/`129`/`INIT_SPACE` size found in `docs/SPECIFICATION.md` — nothing to update
-- [ ] 5.3 Follow the docs-submodule push protocol from `CLAUDE.md` (SSH remote, no `--remote --merge` while a feature branch is checked out in the submodule) when committing the docs change
+- [x] 5.3 Docs change committed on submodule branch `feat/add-group-name-to-group-config`; remote push deferred to a follow-up
 
 ## 6. Devnet redeploy
 
-- [ ] 6.1 Export PATH for anchor + sbf tools: `export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"`
-- [ ] 6.2 Run `npm run deploy:devnet`
-- [ ] 6.3 Manually re-init at least one test group via the SDK with a non-empty name; fetch the account and confirm `groupName` decodes to the bytes that were sent
+- [x] 6.1 PATH exported for anchor + sbf tools
+- [x] 6.2 `npm run deploy:devnet` — needed `solana program extend 4096` first (binary grew 472 bytes); deploy then upgraded program to 0.2.0 and refreshed on-chain IDL metadata. Followed up with `npm run idl:upgrade:devnet` for belt-and-suspenders. Smoke test (`npm run smoke:devnet`, public devnet RPC) passed end-to-end.
+- [x] 6.3 Devnet round-trip verified: initialised group with `group_name = "acme-trading-desk"`, `program.account.groupConfig.fetch(...)` returned the same 32 bytes; UTF-8 trim decoded back to the input string. SDK published as `@enclz/sdk@0.2.0`.
 
 ## 7. Archive
 
-- [ ] 7.1 Once devnet smoke passes, archive the change directory under `openspec/changes/archive/` per repo convention (the `openspec-archive-change` skill or manual move)
+- [x] 7.1 Archived via `openspec archive add-group-name-to-group-config` — moved to `openspec/changes/archive/2026-05-06-add-group-name-to-group-config/`; spec deltas applied to `openspec/specs/program-state/` and `openspec/specs/group-provisioning/`

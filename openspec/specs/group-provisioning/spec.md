@@ -5,11 +5,11 @@ TBD - created by archiving change add-owner-instructions. Update Purpose after a
 ## Requirements
 ### Requirement: initialize_group instruction
 
-The program SHALL expose `initialize_group(backend_operator: Pubkey, protocol_fee_wallet: Pubkey, dex_router: Pubkey)` that creates a `GroupConfig` PDA owned by the signer and atomically creates a type-2 `WhitelistEntry` for `dex_router`.
+The program SHALL expose `initialize_group(group_name: [u8; 32], backend_operator: Pubkey, protocol_fee_wallet: Pubkey, dex_router: Pubkey)` that creates a `GroupConfig` PDA owned by the signer with `group_name` written verbatim into the account, and atomically creates a type-2 `WhitelistEntry` for `dex_router`. The handler SHALL NOT validate the encoding of `group_name`.
 
 #### Scenario: Successful group creation
-- **WHEN** signer calls `initialize_group` with valid pubkeys
-- **THEN** a `GroupConfig` PDA exists with `owner == signer`, `backend_operator` + `protocol_fee_wallet` set, `agent_count == 0`, and a type-2 `WhitelistEntry` PDA exists for `dex_router`
+- **WHEN** signer calls `initialize_group` with a 32-byte name and valid pubkeys
+- **THEN** a `GroupConfig` PDA exists with `owner == signer`, `backend_operator` + `protocol_fee_wallet` set, `agent_count == 0`, `group_name` byte-equal to the input, and a type-2 `WhitelistEntry` PDA exists for `dex_router`
 
 #### Scenario: DEX router auto-whitelisted at init
 - **WHEN** signer calls `initialize_group` with `dex_router = JUPITER_PROGRAM_ID`
@@ -18,6 +18,10 @@ The program SHALL expose `initialize_group(backend_operator: Pubkey, protocol_fe
 #### Scenario: Duplicate group rejected
 - **WHEN** the same signer calls `initialize_group` twice
 - **THEN** the second call fails because the PDA already exists
+
+#### Scenario: Non-UTF-8 name accepted
+- **WHEN** signer calls `initialize_group` with a `group_name` containing arbitrary bytes (e.g. `[0xFF; 32]`)
+- **THEN** the handler succeeds and stores the bytes verbatim — no `InvalidArgument` or other validation error is raised
 
 ### Requirement: add_agent instruction
 
@@ -62,3 +66,4 @@ The program SHALL expose `emergency_withdraw(agent_index: u8)` callable only by 
 #### Scenario: Non-owner rejected
 - **WHEN** any non-owner signer (including the backend operator) calls `emergency_withdraw`
 - **THEN** the call fails with `Unauthorized`
+
