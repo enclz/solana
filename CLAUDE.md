@@ -68,18 +68,6 @@ All three derive `InitSpace`. Always size accounts as `8 + Foo::INIT_SPACE` — 
 
 No active OpenSpec changes are open right now — every proposal so far has been implemented and moved to `openspec/changes/archive/`. The capability specs in `openspec/specs/` are the current source of truth for behaviour. Start a new change directory under `openspec/changes/<name>/` when you take on the next piece of scope.
 
-### Local vs. cloud development environment
-
-Same `Anchor.toml` paths, two materialization paths for the deployer keypair:
-
-| Concern | Local | Claude Code on the web |
-|---|---|---|
-| RPC URLs | `.env` loaded per-command via `dotenv-cli` | Set as cloud env vars; auto-injected into the process |
-| Deployer keypair | File at `.solana/keys/<cluster>-deployer.json` (gitignored) | `SOLANA_<CLUSTER>_DEPLOYER_KEYPAIR` env var → materialized into the same path by `.solana/init.sh` |
-| Toolchain (Anchor, Solana CLI) | Manual install | Setup script in cloud env config (toolchain only — keypair belongs to the SessionStart hook so env-var rotation works without cache invalidation) |
-
-`.solana/init.sh` is wired as a SessionStart hook in `.claude/settings.json`. It runs in both environments but short-circuits via `CLAUDE_CODE_REMOTE` when local — so locally, the file you generated with `solana-keygen new` is authoritative.
-
 ## Conventions
 
 The `solana-anchor-claude-skill` is pinned via `skills-lock.json` and applies whenever you touch Anchor / Rust / TypeScript here. Read it for the full ruleset; the rules that bite hardest:

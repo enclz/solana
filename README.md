@@ -144,43 +144,7 @@ npm run idl:init:mainnet     # first deploy on mainnet
 npm run idl:upgrade:mainnet  # every subsequent upgrade on mainnet
 ```
 
-These scripts require the deployer keypair to be the IDL upgrade authority. Env vars (`QUICKNODE_DEVNET_RPC_URL`, `MAINNET_RPC_URL`) must be set via `.env` or the cloud environment — the scripts run through `dotenv-cli` matching the `deploy:*` pattern.
-
-## Cloud sessions (Claude Code on the web)
-
-`.claude/settings.json` registers a `SessionStart` hook that runs `.solana/init.sh`. The hook materializes deployer keypairs from environment variables into `.solana/keys/<cluster>-deployer.json` — but only when `CLAUDE_CODE_REMOTE=true`, so locally it's a no-op.
-
-In the cloud environment configuration, set:
-
-- `QUICKNODE_DEVNET_RPC_URL` — same as local
-- `SOLANA_DEVNET_DEPLOYER_KEYPAIR` — JSON byte array (no quotes), e.g. `[12,34,...,99]`. Add `SOLANA_TESTNET_DEPLOYER_KEYPAIR` / `SOLANA_MAINNET_DEPLOYER_KEYPAIR` analogously if/when needed.
-- `SOLANA_PROGRAM_ID_KEYPAIR` — JSON byte array of the local `target/deploy/enclz-keypair.json`. Required for `npm run test:e2e` in the cloud, since `anchor test` deploys the program at this keypair's pubkey and it must match `declare_id!` in `lib.rs`. Without it the hook skips silently and only `cargo test` works.
-
-And in the setup script, install Solana CLI + Anchor:
-
-```bash
-#!/bin/bash
-set -euo pipefail
-ANCHOR_VERSION="1.0.1"
-SOLANA_CHANNEL="stable"
-
-if ! command -v solana >/dev/null 2>&1; then
-  sh -c "$(curl -sSfL "https://release.anza.xyz/${SOLANA_CHANNEL}/install")"
-fi
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"
-
-if ! command -v avm >/dev/null 2>&1; then
-  cargo install --git https://github.com/solana-foundation/anchor avm --force --locked
-fi
-avm install "$ANCHOR_VERSION"
-avm use "$ANCHOR_VERSION"
-
-cat > /etc/profile.d/solana-anchor.sh <<'EOF'
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"
-EOF
-```
-
-Network access must be set to **Custom** with `release.anza.xyz` added (the rest is in the Trusted defaults).
+These scripts require the deployer keypair to be the IDL upgrade authority. Env vars (`QUICKNODE_DEVNET_RPC_URL`, `MAINNET_RPC_URL`) must be set via `.env` — the scripts run through `dotenv-cli` matching the `deploy:*` pattern.
 
 ## Project layout
 
@@ -197,7 +161,6 @@ migrations/deploy.ts    devnet/mainnet deploy entrypoint with program-ID drift +
 scripts/                CI helpers: check-coverage
 .github/workflows/      program-ci.yml — build, test, coverage, audit gates
 .solana/keys/           deployer keypairs (gitignored)
-.solana/init.sh         cloud-session keypair materialization hook
 openspec/               OpenSpec change proposals and capability specs
 docs/                   product + architectural specification (submodule)
 ```
