@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "allow": ["Bash(cargo:*)"]
+    "allow": ["Bash(cargo:*)", "Bash(openspec *)"]
   },
   "hooks": {
     "SessionStart": [
