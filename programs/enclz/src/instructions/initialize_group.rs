@@ -5,7 +5,7 @@ use crate::state::whitelist_entry::entry_type;
 use crate::state::{GroupConfig, WhitelistEntry};
 
 #[derive(Accounts)]
-#[instruction(backend_operator: Pubkey, protocol_fee_wallet: Pubkey, dex_router: Pubkey)]
+#[instruction(group_name: [u8; 32], backend_operator: Pubkey, protocol_fee_wallet: Pubkey, dex_router: Pubkey)]
 pub struct InitializeGroupAccountConstraints<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -33,6 +33,7 @@ pub struct InitializeGroupAccountConstraints<'info> {
 
 pub fn handle_initialize_group(
     context: Context<InitializeGroupAccountConstraints>,
+    group_name: [u8; 32],
     backend_operator: Pubkey,
     protocol_fee_wallet: Pubkey,
     _dex_router: Pubkey,
@@ -42,6 +43,7 @@ pub fn handle_initialize_group(
     group_config.backend_operator = backend_operator;
     group_config.protocol_fee_wallet = protocol_fee_wallet;
     group_config.agent_count = 0;
+    group_config.group_name = group_name;
 
     let dex_router_entry = &mut context.accounts.dex_router_entry;
     dex_router_entry.label = *b"dex-router\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";

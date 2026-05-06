@@ -106,6 +106,7 @@ describe("enclz execute_swap (mocha + anchor)", function () {
     );
     await program.methods
       .initializeGroup(
+        padDisplayName("swap-test"),
         backendOperator.publicKey,
         protocolFeeOwner.publicKey,
         STUB_PROGRAM_ID

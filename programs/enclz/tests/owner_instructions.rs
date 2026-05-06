@@ -39,6 +39,7 @@ fn initialize_group_happy_path_stores_fields_and_router_entry() {
     assert_eq!(group.backend_operator, backend_operator);
     assert_eq!(group.protocol_fee_wallet, protocol_fee_wallet);
     assert_eq!(group.agent_count, 0);
+    assert_eq!(group.group_name, [0u8; 32]);
 
     let (router_entry, _) = context.whitelist_pda(&group_pda, &dex_router);
     let entry = context.deserialize_whitelist(&router_entry);
@@ -46,6 +47,33 @@ fn initialize_group_happy_path_stores_fields_and_router_entry() {
     assert_eq!(entry.ttl_expires_at, 0);
     assert_eq!(entry.approved_amount, 0);
     assert_eq!(entry.added_by, owner_pubkey);
+}
+
+#[test]
+fn initialize_group_stores_group_name_verbatim_including_non_utf8_bytes() {
+    let mut context = TestContext::new();
+    let (backend_operator, protocol_fee_wallet, dex_router) = unique_keys();
+    let owner_pubkey = context.owner.pubkey();
+    let (group_pda, _) = context.group_pda(&owner_pubkey);
+    let (router_entry, _) = context.whitelist_pda(&group_pda, &dex_router);
+    let group_name: [u8; 32] = [0xFFu8; 32];
+    let instruction = initialize_group_instruction(
+        &context.program_id,
+        &owner_pubkey,
+        &group_pda,
+        &router_entry,
+        group_name,
+        backend_operator,
+        protocol_fee_wallet,
+        dex_router,
+    );
+    let owner_keypair = context.owner.insecure_clone();
+    context
+        .send_signed(instruction, &[&owner_keypair])
+        .expect("initialize_group with non-UTF-8 name should succeed");
+
+    let group = context.deserialize_group(&group_pda);
+    assert_eq!(group.group_name, group_name);
 }
 
 #[test]
@@ -62,6 +90,7 @@ fn initialize_group_rejects_duplicate() {
         &owner_pubkey,
         &group_pda,
         &router_entry,
+        [0u8; 32],
         backend_operator,
         protocol_fee_wallet,
         dex_router,

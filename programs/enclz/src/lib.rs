@@ -21,7 +21,7 @@ solana_security_txt::security_txt! {
     policy: "https://github.com/enclz/solana/blob/main/SECURITY.md",
     preferred_languages: "en",
     source_code: "https://github.com/enclz/solana",
-    source_release: "v0.1.2",
+    source_release: "v0.2.0",
     auditors: "None"
 }
 
@@ -31,12 +31,14 @@ pub mod enclz {
 
     pub fn initialize_group(
         context: Context<InitializeGroupAccountConstraints>,
+        group_name: [u8; 32],
         backend_operator: Pubkey,
         protocol_fee_wallet: Pubkey,
         dex_router: Pubkey,
     ) -> Result<()> {
         instructions::initialize_group::handle_initialize_group(
             context,
+            group_name,
             backend_operator,
             protocol_fee_wallet,
             dex_router,
@@ -228,8 +230,8 @@ mod tests {
 
     #[test]
     fn init_space_group_config_matches_field_layout() {
-        // 32 (owner) + 32 (backend_operator) + 32 (protocol_fee_wallet) + 1 (agent_count)
-        assert_eq!(GroupConfig::INIT_SPACE, 32 + 32 + 32 + 1);
+        // 32 (owner) + 32 (backend_operator) + 32 (protocol_fee_wallet) + 1 (agent_count) + 32 (group_name)
+        assert_eq!(GroupConfig::INIT_SPACE, 32 + 32 + 32 + 1 + 32);
     }
 
     #[test]
@@ -255,6 +257,7 @@ mod tests {
             backend_operator: Pubkey::new_unique(),
             protocol_fee_wallet: Pubkey::new_unique(),
             agent_count: 7,
+            group_name: [42u8; 32],
         };
         AnchorSerialize::serialize(&value, &mut cursor).expect("serialize must fit");
         let decoded: GroupConfig =
@@ -264,6 +267,7 @@ mod tests {
         assert_eq!(decoded.backend_operator, value.backend_operator);
         assert_eq!(decoded.protocol_fee_wallet, value.protocol_fee_wallet);
         assert_eq!(decoded.agent_count, value.agent_count);
+        assert_eq!(decoded.group_name, value.group_name);
     }
 
     #[test]

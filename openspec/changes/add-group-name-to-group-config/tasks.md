@@ -1,39 +1,42 @@
 ## 1. Program changes
 
-- [ ] 1.1 Append `pub group_name: [u8; 32],` after `agent_count` in `programs/enclz/src/state/group_config.rs`
-- [ ] 1.2 In `programs/enclz/src/instructions/initialize_group.rs`, update the `#[instruction(...)]` attribute (line 8) and the `handle_initialize_group` signature (lines 34–39) so `group_name: [u8; 32]` is the **first** argument, before `backend_operator`
-- [ ] 1.3 In the same handler, write `group_config.group_name = group_name;` after the existing field assignments (around line 44). Do not validate the bytes
-- [ ] 1.4 Confirm that `space = GroupConfig::DISCRIMINATOR.len() + GroupConfig::INIT_SPACE` at `initialize_group.rs:16` is unchanged (Anchor auto-derives the new size)
+- [x] 1.1 Append `pub group_name: [u8; 32],` after `agent_count` in `programs/enclz/src/state/group_config.rs`
+- [x] 1.2 In `programs/enclz/src/instructions/initialize_group.rs`, update the `#[instruction(...)]` attribute (line 8) and the `handle_initialize_group` signature (lines 34–39) so `group_name: [u8; 32]` is the **first** argument, before `backend_operator`
+- [x] 1.3 In the same handler, write `group_config.group_name = group_name;` after the existing field assignments (around line 44). Do not validate the bytes
+- [x] 1.4 Confirm that `space = GroupConfig::DISCRIMINATOR.len() + GroupConfig::INIT_SPACE` at `initialize_group.rs:16` is unchanged (Anchor auto-derives the new size)
+- [x] 1.5 Update the `#[program]` wrapper `initialize_group` in `programs/enclz/src/lib.rs:32–44` to thread `group_name` to the handler (not in original task list — discovered during compile)
 
-## 2. Rust unit tests
+## 2. Rust unit + litesvm tests
 
-- [ ] 2.1 Update `init_space_group_config_matches_field_layout` in `programs/enclz/src/lib.rs:230–233` so the assertion reads `32 + 32 + 32 + 1 + 32` and the comment lists `group_name`
-- [ ] 2.2 Update `group_config_round_trip_through_init_space_buffer` in `programs/enclz/src/lib.rs:249–267` to set `group_name` to a non-zero pattern (e.g. `[42u8; 32]`) on the input value and assert the decoded `group_name` is byte-equal
-- [ ] 2.3 Run `cargo test --package enclz` and confirm all tests pass
+- [x] 2.1 Update `init_space_group_config_matches_field_layout` in `programs/enclz/src/lib.rs` so the assertion reads `32 + 32 + 32 + 1 + 32` and the comment lists `group_name`
+- [x] 2.2 Update `group_config_round_trip_through_init_space_buffer` to set `group_name` to a non-zero pattern (`[42u8; 32]`) and assert byte-equality after decode
+- [x] 2.3 Update `programs/enclz/tests/common/mod.rs` `initialize_group_instruction(...)` builder + `provision_group_with_router(...)` helper + the direct call in `programs/enclz/tests/owner_instructions.rs:60` (not in original task list — discovered during compile)
+- [x] 2.4 Add Rust litesvm test `initialize_group_stores_group_name_verbatim_including_non_utf8_bytes` covering the spec scenario "Non-UTF-8 name accepted"
+- [x] 2.5 Run `cargo test --package enclz` — 24 passed, 0 failed
 
 ## 3. TypeScript integration tests
 
-- [ ] 3.1 Add a small helper that produces a 32-byte name (`Buffer.alloc(32).copy(Buffer.from(name, 'utf8'))` returned as `number[]`). Place it where the test files can share it (or inline per spec — match existing style)
-- [ ] 3.2 Update the `.initializeGroup(...)` call in `tests/owner_instructions.spec.ts:108` to pass the name first
-- [ ] 3.3 Update the `.initializeGroup(...)` call in `tests/smoke.ts:215`
-- [ ] 3.4 Update the `.initializeGroup(...)` call in `tests/execute_swap.spec.ts:108`
-- [ ] 3.5 Update the `.initializeGroup(...)` calls in `tests/execute_lending_op.spec.ts:113` and `:235`
-- [ ] 3.6 Update the `.initializeGroup(...)` call in `tests/execute_transfer.spec.ts:114`
-- [ ] 3.7 In `tests/owner_instructions.spec.ts`, add a post-init assertion that `groupConfig.groupName` (decoded as `number[]`) byte-equals the input
-- [ ] 3.8 Run `npm run test:e2e` and confirm all specs pass
+- [x] 3.1 Reused existing per-file `padDisplayName(text)` helper (already 32-byte buffer producer) — no new shared helper needed
+- [x] 3.2 `tests/owner_instructions.spec.ts` — `provisionGroup` now takes a `groupName` param defaulting to `padDisplayName("acme-trading-desk")`
+- [x] 3.3 `tests/smoke.ts` — passes `padDisplayName("smoke-test-group")`
+- [x] 3.4 `tests/execute_swap.spec.ts` — passes `padDisplayName("swap-test")`
+- [x] 3.5 `tests/execute_lending_op.spec.ts` — both call sites pass `padDisplayName("lending-test")`
+- [x] 3.6 `tests/execute_transfer.spec.ts` — `provisionFleet` passes `padDisplayName("transfer-test")`
+- [x] 3.7 `tests/owner_instructions.spec.ts` asserts `Array.from(groupConfig.groupName)` deep-equals the input
+- [x] 3.8 `npm run test:e2e` — 7 passing
 
 ## 4. Version bump and security_txt
 
-- [ ] 4.1 Bump `programs/enclz/Cargo.toml` `version` from `0.1.2` to `0.2.0`
-- [ ] 4.2 Bump `programs/enclz/src/lib.rs:24` `source_release` from `"v0.1.2"` to `"v0.2.0"`
-- [ ] 4.3 Run `anchor build` and confirm `target/idl/enclz.json` regenerates with `metadata.version == "0.2.0"`, `instructions[].name == "initialize_group"` lists `group_name` as the first arg of type `{ "array": ["u8", 32] }`, and `accounts[].name == "GroupConfig"` includes `group_name`
-- [ ] 4.4 Run `node scripts/check-idl-coverage.mjs` (the same gate CI runs after `anchor build`)
-- [ ] 4.5 Run `node scripts/build-sdk.mjs` and confirm `sdk/package.json` `version` updates to `"0.2.0"`
+- [x] 4.1 `programs/enclz/Cargo.toml` `version` 0.1.2 → 0.2.0
+- [x] 4.2 `programs/enclz/src/lib.rs` `source_release` "v0.1.2" → "v0.2.0"
+- [x] 4.3 `anchor build` regenerated `target/idl/enclz.json` with `metadata.version: "0.2.0"`, `initialize_group` first arg `group_name: [u8; 32]`, `GroupConfig` field listed
+- [x] 4.4 `node scripts/check-idl-coverage.mjs` — 11 handlers / 11 instructions, in sync
+- [x] 4.5 `node scripts/build-sdk.mjs` — `sdk/package.json` bumped to 0.2.0, `sdk/dist/` rebuilt
 
 ## 5. Documentation
 
-- [ ] 5.1 Update `docs/SPECIFICATION.md` GroupConfig field listing (lines ~64–71) to include `group_name: [u8; 32]` after `agent_count`
-- [ ] 5.2 If `docs/SPECIFICATION.md` records the account size anywhere downstream, update `97 → 129` bytes
+- [x] 5.1 `docs/SPECIFICATION.md` `GroupConfig` field listing now includes `group_name: [u8; 32]`; `initialize_group` Args block now lists `group_name` first
+- [x] 5.2 No hardcoded `97`/`129`/`INIT_SPACE` size found in `docs/SPECIFICATION.md` — nothing to update
 - [ ] 5.3 Follow the docs-submodule push protocol from `CLAUDE.md` (SSH remote, no `--remote --merge` while a feature branch is checked out in the submodule) when committing the docs change
 
 ## 6. Devnet redeploy

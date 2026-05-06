@@ -111,6 +111,7 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
     const dexRouterEntry = findWhitelistPda(program.programId, group, dexRouter);
     await program.methods
       .initializeGroup(
+        padDisplayName("lending-test"),
         backendOperator.publicKey,
         protocolFeeOwner.publicKey,
         dexRouter
@@ -233,6 +234,7 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
     const dexRouterEntry = findWhitelistPda(program.programId, group, dexRouter);
     await program.methods
       .initializeGroup(
+        padDisplayName("lending-test"),
         backendOperator.publicKey,
         protocolFeeOwner.publicKey,
         dexRouter

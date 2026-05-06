@@ -206,11 +206,13 @@ pub fn initialize_group_instruction(
     owner: &Pubkey,
     group_config: &Pubkey,
     dex_router_entry: &Pubkey,
+    group_name: [u8; 32],
     backend_operator: Pubkey,
     protocol_fee_wallet: Pubkey,
     dex_router: Pubkey,
 ) -> Instruction {
     let data = enclz::instruction::InitializeGroup {
+        group_name,
         backend_operator,
         protocol_fee_wallet,
         dex_router,
@@ -550,6 +552,7 @@ pub fn provision_group_with_router(
         &owner_pubkey,
         &group_pda,
         &router_entry,
+        [0u8; 32],
         backend_operator,
         protocol_fee_wallet,
         dex_router,
