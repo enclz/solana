@@ -164,14 +164,20 @@ describe("enclz execute_swap (mocha + anchor)", function () {
       protocolFeeOwner.publicKey
     );
 
-    // Output ATA — stub doesn't move tokens, so this stays 0.
-    const outputOwner = Keypair.generate();
-    await airdrop(provider, outputOwner.publicKey, LAMPORTS_PER_SOL);
+    // Output ATA must be owned by the agent_wallet PDA (custody pin). Use a
+    // fresh mint so we exercise the realistic "swap into a novel mint" shape.
+    const outputMint = await createMint(
+      provider.connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      null,
+      6
+    );
     const outputAta = await createAssociatedTokenAccount(
       provider.connection,
-      outputOwner,
-      mint,
-      outputOwner.publicKey
+      owner,
+      outputMint,
+      agent
     );
 
     await program.methods
@@ -189,9 +195,12 @@ describe("enclz execute_swap (mocha + anchor)", function () {
         fromTokenAccount: agentAta,
         toTokenAccount: outputAta,
         whitelistEntry: dexRouterEntry,
+        inputMint: mint,
         protocolFeeTokenAccount: protocolFeeAta,
+        protocolFeeWallet: protocolFeeOwner.publicKey,
         jupiterProgram: STUB_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .signers([backendOperator])
@@ -205,7 +214,8 @@ describe("enclz execute_swap (mocha + anchor)", function () {
     expect(agentBalance.toString()).to.equal((5_000_000n - 1_000n).toString());
     const agentState = await program.account.agentWallet.fetch(agent);
     expect(agentState.operatorNonce.toString()).to.equal("1");
-    expect(agentState.spentToday.toString()).to.equal("1000000");
+    // spent_today is no longer touched on the swap path under the new policy.
+    expect(agentState.spentToday.toString()).to.equal("0");
     expect(agentState.txCountThisHour).to.equal(1);
   });
 });

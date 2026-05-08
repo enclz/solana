@@ -1032,6 +1032,63 @@ fn auto_void_and_recreate_works_under_new_cap() {
 }
 
 #[test]
+fn from_token_account_with_wrong_mint_rejects() {
+    // Provision an agent bound to mint A; build a `from_token_account` ATA
+    // owned by the agent_wallet PDA but with mint B; the absolute mint pin
+    // must reject before any state mutation.
+    let mut setup = setup_with_funded_agent(5_000_000);
+    let now = current_unix_time(&setup);
+    let recipient_owner = Keypair::new();
+    setup
+        .context
+        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
+    let recipient_token_account =
+        setup
+            .context
+            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
+    let entry_pda = add_external_entry(
+        &mut setup,
+        recipient_owner.pubkey(),
+        now + 86_400,
+        5_000_000,
+    );
+
+    // Create a second mint B and a PDA-owned ATA for it (the kind of residual
+    // an agent could accumulate via swaps under the new policy).
+    let mint_b = setup.context.create_mint(&setup.mint_authority, 6);
+    let owner_keypair = setup.context.owner.insecure_clone();
+    let agent_b_ata =
+        setup
+            .context
+            .create_ata(&owner_keypair, &mint_b, &setup.agent_pda);
+    setup.context.mint_to(
+        &setup.mint_authority,
+        &mint_b,
+        &agent_b_ata,
+        5_000_000,
+    );
+
+    let owner_pubkey = setup.context.owner.pubkey();
+    let instruction = common::execute_transfer_instruction(
+        &setup.context.program_id,
+        &setup.backend_operator.pubkey(),
+        &setup.group_pda,
+        &owner_pubkey,
+        &setup.agent_pda,
+        &agent_b_ata, // wrong mint, right owner
+        &recipient_token_account,
+        &entry_pda,
+        &setup.protocol_fee_token_account,
+        500_000,
+        0,
+        0,
+    );
+    let operator = setup.backend_operator.insecure_clone();
+    let result = setup.context.send_signed(instruction, &[&operator]);
+    assert_anchor_error(result, EnclzError::InvalidMint);
+}
+
+#[test]
 fn zero_amount_rejects_with_invalid_amount() {
     let mut setup = setup_with_funded_agent(5_000_000);
     let now = current_unix_time(&setup);

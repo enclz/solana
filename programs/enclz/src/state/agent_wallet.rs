@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct AgentWallet {
     pub group: Pubkey,
+    pub mint: Pubkey,
     pub display_name: [u8; 32],
     pub daily_limit: u64,
     pub per_tx_limit: u64,

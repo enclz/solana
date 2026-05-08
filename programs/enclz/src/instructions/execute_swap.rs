@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 use crate::constants::{WALLET_SEED, WHITELIST_SEED};
 use crate::errors::EnclzError;
@@ -7,16 +8,22 @@ use crate::state::whitelist_entry::entry_type;
 use crate::state::{AgentWallet, GroupConfig, WhitelistEntry};
 use crate::util::cpi::invoke_protocol_cpi;
 use crate::util::fee::compute_fee;
-use crate::util::time::{needs_daily_reset, needs_hourly_reset};
+use crate::util::time::needs_hourly_reset;
 
 // `agent_index` reconstructs the agent_wallet PDA seed for the SPL transfer
 // CPI signer (same convention as `execute_transfer`). `route_data` is the raw
 // Jupiter v6 instruction payload; the backend constructs it with
 // `net_amount_in = amount_in - protocol_fee` and the desired slippage so
 // Jupiter's own `minimum_amount_out` check applies to the post-fee net.
+//
+// Mint policy: input/output mints are NOT pinned to `agent_wallet.mint`. The
+// load-bearing safety constraint is `to_token_account.owner == agent_wallet`
+// PDA — swap proceeds always remain in agent custody. A compromised operator
+// can rotate holdings between mints but cannot exfiltrate them.
 #[derive(Accounts)]
 #[instruction(amount_in: u64, minimum_amount_out: u64, expected_nonce: u64, agent_index: u8)]
 pub struct ExecuteSwapAccountConstraints<'info> {
+    #[account(mut)]
     pub backend_operator: Signer<'info>,
 
     #[account(
@@ -34,11 +41,14 @@ pub struct ExecuteSwapAccountConstraints<'info> {
     #[account(
         mut,
         constraint = from_token_account.owner == agent_wallet.key() @ EnclzError::InvalidTokenAccount,
-        constraint = from_token_account.mint == protocol_fee_token_account.mint @ EnclzError::InvalidMint,
+        constraint = from_token_account.mint == input_mint.key() @ EnclzError::InvalidMint,
     )]
     pub from_token_account: Box<Account<'info, TokenAccount>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = to_token_account.owner == agent_wallet.key() @ EnclzError::InvalidTokenAccount,
+    )]
     pub to_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
@@ -47,11 +57,22 @@ pub struct ExecuteSwapAccountConstraints<'info> {
     )]
     pub whitelist_entry: Box<Account<'info, WhitelistEntry>>,
 
+    pub input_mint: Box<Account<'info, Mint>>,
+
     #[account(
-        mut,
-        constraint = protocol_fee_token_account.owner == group_config.protocol_fee_wallet @ EnclzError::InvalidFeeAccount,
+        init_if_needed,
+        payer = backend_operator,
+        associated_token::mint = input_mint,
+        associated_token::authority = protocol_fee_wallet,
     )]
     pub protocol_fee_token_account: Box<Account<'info, TokenAccount>>,
+
+    /// CHECK: address-bound to `group_config.protocol_fee_wallet`; only used
+    /// as the authority for the fee ATA derivation, so no data is read.
+    #[account(
+        address = group_config.protocol_fee_wallet @ EnclzError::InvalidFeeAccount,
+    )]
+    pub protocol_fee_wallet: UncheckedAccount<'info>,
 
     /// CHECK: program is authorized via the type-2 whitelist_entry keyed on
     /// `jupiter_program.key()`; the seed binding plus entry_type assertion
@@ -59,6 +80,7 @@ pub struct ExecuteSwapAccountConstraints<'info> {
     pub jupiter_program: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
@@ -87,45 +109,34 @@ pub fn handle_execute_swap<'info>(
         .checked_add(1)
         .ok_or(EnclzError::InvalidAmount)?;
 
-    // Step 3: roll counters when the on-chain clock crossed a boundary.
+    // Step 3: roll the hourly counter when the on-chain clock crossed the hour
+    // boundary. `spent_today` and `last_spend_reset` are deliberately not
+    // touched on the swap path — daily and per-tx limits are mint-relative
+    // and meaningless when applied to an arbitrary swap input mint.
     let now = Clock::get()?.unix_timestamp;
-    if needs_daily_reset(agent_wallet.last_spend_reset, now) {
-        agent_wallet.spent_today = 0;
-        agent_wallet.last_spend_reset = now;
-    }
     if needs_hourly_reset(agent_wallet.last_hour_reset, now) {
         agent_wallet.tx_count_this_hour = 0;
         agent_wallet.last_hour_reset = now;
     }
 
-    // Steps 4–6: limits applied to gross `amount_in` (same as execute_transfer).
-    require!(
-        amount_in <= agent_wallet.per_tx_limit,
-        EnclzError::PerTxLimitExceeded
-    );
-    let projected_spent = agent_wallet
-        .spent_today
-        .checked_add(amount_in)
-        .ok_or(EnclzError::InvalidAmount)?;
-    require!(
-        projected_spent <= agent_wallet.daily_limit,
-        EnclzError::DailyLimitExceeded
-    );
+    // Step 4: only the hourly transaction cap gates swaps. Funds-stay-in-custody
+    // (enforced by `to_token_account.owner == agent_wallet`) removes the theft
+    // threat that the daily and per-tx limits guarded against.
     require!(
         agent_wallet.tx_count_this_hour < agent_wallet.hourly_tx_cap,
         EnclzError::HourlyCapExceeded
     );
 
-    // Step 7: only type-2 (PROTOCOL) whitelist entries authorize a swap CPI.
+    // Step 5: only type-2 (PROTOCOL) whitelist entries authorize a swap CPI.
     require!(
         context.accounts.whitelist_entry.entry_type == entry_type::PROTOCOL,
         EnclzError::WhitelistViolation
     );
 
-    // Step 8: fee math.
+    // Step 6: fee math.
     let (_net_amount_in, fee) = compute_fee(amount_in)?;
 
-    // Step 9: PDA signer seeds for both the fee transfer and the Jupiter CPI.
+    // Step 7: PDA signer seeds for both the fee transfer and the Jupiter CPI.
     let group_key = context.accounts.group_config.key();
     let agent_bump = agent_wallet.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -135,7 +146,7 @@ pub fn handle_execute_swap<'info>(
         &[agent_bump],
     ]];
 
-    // Step 10: deduct protocol fee from the agent ATA BEFORE the swap. Output
+    // Step 8: deduct protocol fee from the agent ATA BEFORE the swap. Output
     // mint may differ from input mint, so taking fee from input is the only
     // deterministic option — see design.md.
     if fee > 0 {
@@ -152,7 +163,7 @@ pub fn handle_execute_swap<'info>(
         token::transfer(cpi_context, fee)?;
     }
 
-    // Step 11: Jupiter v6 CPI. Route legs flow through `remaining_accounts`
+    // Step 9: Jupiter v6 CPI. Route legs flow through `remaining_accounts`
     // because v6 accepts a variable account list shaped by the route plan.
     invoke_protocol_cpi(
         &context.accounts.jupiter_program,
@@ -161,9 +172,7 @@ pub fn handle_execute_swap<'info>(
         signer_seeds,
     )?;
 
-    // Step 12: counters reflect gross amount_in (fee + net both count against
-    // the daily cap; type-2 entries are uncapped so no amount_used update).
-    agent_wallet.spent_today = projected_spent;
+    // Step 10: only the hourly counter advances. `spent_today` stays untouched.
     agent_wallet.tx_count_this_hour = agent_wallet
         .tx_count_this_hour
         .checked_add(1)

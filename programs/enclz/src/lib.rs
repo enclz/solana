@@ -21,7 +21,7 @@ solana_security_txt::security_txt! {
     policy: "https://github.com/enclz/solana/blob/main/SECURITY.md",
     preferred_languages: "en",
     source_code: "https://github.com/enclz/solana",
-    source_release: "v0.2.0",
+    source_release: "v0.3.0",
     auditors: "None"
 }
 
@@ -236,9 +236,10 @@ mod tests {
 
     #[test]
     fn init_space_agent_wallet_matches_field_layout() {
-        // 32 (group) + 32 (display_name) + 8 + 8 + 1 + 8 + 1 + 8 + 8 + 8 + 1 (bump)
-        let expected = 32 + 32 + 8 + 8 + 1 + 8 + 1 + 8 + 8 + 8 + 1;
+        // 32 (group) + 32 (mint) + 32 (display_name) + 8 + 8 + 1 + 8 + 1 + 8 + 8 + 8 + 1 (bump)
+        let expected = 32 + 32 + 32 + 8 + 8 + 1 + 8 + 1 + 8 + 8 + 8 + 1;
         assert_eq!(AgentWallet::INIT_SPACE, expected);
+        assert_eq!(AgentWallet::INIT_SPACE, 147);
     }
 
     #[test]
@@ -276,6 +277,7 @@ mod tests {
         let mut cursor: &mut [u8] = &mut buf[8..];
         let value = AgentWallet {
             group: Pubkey::new_unique(),
+            mint: Pubkey::new_unique(),
             display_name: [0xAB; 32],
             daily_limit: DEFAULT_DAILY_LIMIT,
             per_tx_limit: DEFAULT_PER_TX_LIMIT,
@@ -292,6 +294,7 @@ mod tests {
             AnchorDeserialize::deserialize(&mut &buf[8..8 + AgentWallet::INIT_SPACE])
                 .expect("decode must succeed");
         assert_eq!(decoded.group, value.group);
+        assert_eq!(decoded.mint, value.mint);
         assert_eq!(decoded.daily_limit, DEFAULT_DAILY_LIMIT);
         assert_eq!(decoded.per_tx_limit, DEFAULT_PER_TX_LIMIT);
         assert_eq!(decoded.hourly_tx_cap, DEFAULT_HOURLY_CAP);

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constants::WALLET_SEED;
 use crate::errors::EnclzError;
@@ -24,18 +24,15 @@ pub struct EmergencyWithdrawAccountConstraints<'info> {
 
     #[account(
         mut,
-        token::mint = mint,
         token::authority = agent_wallet,
     )]
     pub agent_token_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        token::mint = mint,
+        constraint = destination_token_account.mint == agent_token_account.mint @ EnclzError::InvalidMint,
     )]
     pub destination_token_account: Account<'info, TokenAccount>,
-
-    pub mint: Account<'info, Mint>,
 
     pub token_program: Program<'info, Token>,
 }

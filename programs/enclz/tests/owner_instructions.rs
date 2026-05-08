@@ -150,6 +150,7 @@ fn add_agent_with_defaults_applies_template_values() {
     assert_eq!(agent.per_tx_limit, DEFAULT_PER_TX_LIMIT);
     assert_eq!(agent.hourly_tx_cap, DEFAULT_HOURLY_CAP);
     assert_eq!(agent.group, group_pda);
+    assert_eq!(agent.mint, mint);
     assert_eq!(agent.display_name, DISPLAY_NAME);
     assert_eq!(agent.operator_nonce, 0);
 
@@ -340,7 +341,6 @@ fn emergency_withdraw_sweeps_full_balance_and_rejects_non_owner() {
         &agent_pda,
         &agent_token_account,
         &destination_token_account,
-        &mint,
         0,
     );
     let attacker_result = context.send_signed(attacker_instruction, &[&attacker]);
@@ -356,7 +356,6 @@ fn emergency_withdraw_sweeps_full_balance_and_rejects_non_owner() {
         &agent_pda,
         &agent_token_account,
         &destination_token_account,
-        &mint,
         0,
     );
     context
@@ -368,6 +367,81 @@ fn emergency_withdraw_sweeps_full_balance_and_rejects_non_owner() {
         context.token_balance(&destination_token_account),
         funded_amount
     );
+}
+
+#[test]
+fn emergency_withdraw_sweeps_non_bound_mint_accumulated_via_swaps() {
+    // Provision an agent bound to mint A; plant a balance of a different mint
+    // M (the kind of residual a swap could land in custody) and sweep it.
+    let mut context = TestContext::new();
+    let (backend_operator, protocol_fee_wallet, dex_router) = unique_keys();
+    let group_pda =
+        provision_group_with_router(&mut context, backend_operator, protocol_fee_wallet, dex_router);
+    let mint_authority = Keypair::new();
+    context.airdrop(&mint_authority.pubkey(), STARTING_LAMPORTS);
+    let bound_mint = context.create_mint(&mint_authority, 6);
+    let (agent_pda, _, _) = add_first_agent(&mut context, group_pda, bound_mint, None, None, None);
+
+    // A non-bound mint M with a PDA-owned ATA holding tokens.
+    let other_mint = context.create_mint(&mint_authority, 6);
+    let owner_keypair = context.owner.insecure_clone();
+    let agent_other_ata = context.create_ata(&owner_keypair, &other_mint, &agent_pda);
+    let funded_amount = 7_500_000;
+    context.mint_to(&mint_authority, &other_mint, &agent_other_ata, funded_amount);
+
+    let destination_owner = Keypair::new();
+    context.airdrop(&destination_owner.pubkey(), STARTING_LAMPORTS);
+    let destination_other_ata =
+        context.create_ata(&destination_owner, &other_mint, &destination_owner.pubkey());
+
+    let owner_pubkey = context.owner.pubkey();
+    let owner_keypair = context.owner.insecure_clone();
+    let instruction = emergency_withdraw_instruction(
+        &context.program_id,
+        &owner_pubkey,
+        &group_pda,
+        &agent_pda,
+        &agent_other_ata,
+        &destination_other_ata,
+        0,
+    );
+    context.send_signed(instruction, &[&owner_keypair]).unwrap();
+    assert_eq!(context.token_balance(&agent_other_ata), 0);
+    assert_eq!(context.token_balance(&destination_other_ata), funded_amount);
+}
+
+#[test]
+fn emergency_withdraw_rejects_mint_mismatch_between_agent_and_destination() {
+    let mut context = TestContext::new();
+    let (backend_operator, protocol_fee_wallet, dex_router) = unique_keys();
+    let group_pda =
+        provision_group_with_router(&mut context, backend_operator, protocol_fee_wallet, dex_router);
+    let mint_authority = Keypair::new();
+    context.airdrop(&mint_authority.pubkey(), STARTING_LAMPORTS);
+    let mint_a = context.create_mint(&mint_authority, 6);
+    let (agent_pda, _, agent_token_account) =
+        add_first_agent(&mut context, group_pda, mint_a, None, None, None);
+    context.mint_to(&mint_authority, &mint_a, &agent_token_account, 1_000_000);
+
+    let mint_b = context.create_mint(&mint_authority, 6);
+    let destination_owner = Keypair::new();
+    context.airdrop(&destination_owner.pubkey(), STARTING_LAMPORTS);
+    let destination_b_ata =
+        context.create_ata(&destination_owner, &mint_b, &destination_owner.pubkey());
+
+    let owner_pubkey = context.owner.pubkey();
+    let owner_keypair = context.owner.insecure_clone();
+    let instruction = emergency_withdraw_instruction(
+        &context.program_id,
+        &owner_pubkey,
+        &group_pda,
+        &agent_pda,
+        &agent_token_account, // mint A
+        &destination_b_ata,   // mint B
+        0,
+    );
+    let result = context.send_signed(instruction, &[&owner_keypair]);
+    assert!(result.is_err(), "mint mismatch must reject");
 }
 
 fn add_external_entry(

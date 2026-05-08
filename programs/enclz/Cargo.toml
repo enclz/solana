@@ -1,6 +1,6 @@
 [package]
 name = "enclz"
-version = "0.2.0"
+version = "0.3.0"
 description = "Enclz on-chain spend-policy enforcement program"
 edition = "2021"
 # Internal crate — never published to crates.io. Marking it `publish = false`
@@ -22,7 +22,7 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = "1.0.1"
+anchor-lang = { version = "1.0.1", features = ["init-if-needed"] }
 anchor-spl = "1.0.1"
 solana-security-txt = "1.1"
 

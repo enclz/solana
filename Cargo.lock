@@ -1201,7 +1201,7 @@ dependencies = [
 
 [[package]]
 name = "enclz"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
