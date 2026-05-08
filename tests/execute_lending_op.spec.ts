@@ -108,7 +108,11 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
     // Use any pubkey as dex_router; the lending program goes through a
     // separately-added type-2 whitelist entry below.
     const dexRouter = Keypair.generate().publicKey;
-    const dexRouterEntry = findWhitelistPda(program.programId, group, dexRouter);
+    const dexRouterEntry = findWhitelistPda(
+      program.programId,
+      group,
+      dexRouter
+    );
     await program.methods
       .initializeGroup(
         padDisplayName("lending-test"),
@@ -170,7 +174,11 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
     );
 
     // Whitelist the stub program as type-2 (PROTOCOL).
-    const lendingEntry = findWhitelistPda(program.programId, group, STUB_PROGRAM_ID);
+    const lendingEntry = findWhitelistPda(
+      program.programId,
+      group,
+      STUB_PROGRAM_ID
+    );
     await program.methods
       .addToWhitelist(
         STUB_PROGRAM_ID,
@@ -231,7 +239,11 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
 
     const group = findGroupPda(program.programId, owner.publicKey);
     const dexRouter = Keypair.generate().publicKey;
-    const dexRouterEntry = findWhitelistPda(program.programId, group, dexRouter);
+    const dexRouterEntry = findWhitelistPda(
+      program.programId,
+      group,
+      dexRouter
+    );
     await program.methods
       .initializeGroup(
         padDisplayName("lending-test"),
@@ -296,7 +308,11 @@ describe("enclz execute_lending_op (mocha + anchor)", function () {
       protocolFeeOwner.publicKey
     );
 
-    const lendingEntry = findWhitelistPda(program.programId, group, STUB_PROGRAM_ID);
+    const lendingEntry = findWhitelistPda(
+      program.programId,
+      group,
+      STUB_PROGRAM_ID
+    );
     await program.methods
       .addToWhitelist(
         STUB_PROGRAM_ID,
