@@ -52,24 +52,24 @@
 
 ## 9. IDL + SDK regeneration
 
-- [ ] 9.1 Run `anchor build` and confirm `target/idl/enclz.json` includes the new `AgentWallet.mint` field, that `emergencyWithdraw` no longer lists a `mint` account, and that `executeSwap` lists `associated_token_program`, `input_mint`, and `protocol_fee_wallet`
-- [ ] 9.2 Run `node scripts/check-idl-coverage.mjs` — must report all 11 handlers present
-- [ ] 9.3 Run `node scripts/build-sdk.mjs` — must regenerate `sdk/dist` and bump `sdk/package.json` to `0.3.0`
+- [x] 9.1 Run `anchor build` and confirm `target/idl/enclz.json` includes the new `AgentWallet.mint` field, that `emergencyWithdraw` no longer lists a `mint` account, and that `executeSwap` lists `associated_token_program`, `input_mint`, and `protocol_fee_wallet`
+- [x] 9.2 Run `node scripts/check-idl-coverage.mjs` — must report all 11 handlers present
+- [x] 9.3 Run `node scripts/build-sdk.mjs` — must regenerate `sdk/dist` and bump `sdk/package.json` to `0.3.0`
 
 ## 10. Verification
 
 - [x] 10.1 `cargo test --package enclz --lib` passes (28 unit tests)
-- [ ] 10.2 `npm run test:e2e` passes (mocha + solana-test-validator legacy), including all new tests in section 8
-- [ ] 10.3 `npm run lint` passes
+- [x] 10.2 `npm run test:e2e` passes — 7 mocha tests across execute_transfer / execute_swap / execute_lending_op / owner_instructions. Full Rust LiteSVM suite also passes: 9 lending + 11 swap + 27 transfer + 27 owner = 74 integration tests
+- [x] 10.3 `npm run lint` passes
 
 ## 11. Spec sync (post-implementation)
 
-- [ ] 11.1 Update `docs/SPECIFICATION.md` `AgentWallet` field listing to include `mint: Pubkey` between `group` and `display_name`
-- [ ] 11.2 Update `docs/SPECIFICATION.md` swap-flow section to describe the custody pin on `to_token_account.owner`, the dropped daily/per-tx limits on swaps, and the lazy fee-ATA initialization
-- [ ] 11.3 Update `docs/SPECIFICATION.md` `emergency_withdraw` description to reflect mint parity (sweep any mint, owner-only, no standalone Mint account)
-- [ ] 11.4 Commit in the `docs/` submodule and push via SSH remote per CLAUDE.md; bump the docs submodule pointer in this repo (`git add docs && git commit`)
+- [x] 11.1 Update `docs/SPECIFICATION.md` `AgentWallet` field listing to include `mint: Pubkey` between `group` and `display_name`
+- [x] 11.2 Update `docs/SPECIFICATION.md` swap-flow section to describe the custody pin on `to_token_account.owner`, the dropped daily/per-tx limits on swaps, and the lazy fee-ATA initialization
+- [x] 11.3 Update `docs/SPECIFICATION.md` `emergency_withdraw` description to reflect mint parity (sweep any mint, owner-only, no standalone Mint account)
+- [x] 11.4 Commit in the `docs/` submodule (`bind-agent-mint` branch, pushed to `enclz/.github`) and bump the submodule pointer in this repo. After the docs PR merges, re-bump the parent pointer to the resulting main commit per CLAUDE.md precedent
 
 ## 12. Deploy
 
-- [ ] 12.1 `npm run deploy:devnet` (use `solana program extend` first if `.so` outgrew the existing buffer)
-- [ ] 12.2 Smoke-test the backend round-trip against the new SDK: (a) `addAgent` captures the mint, (b) `executeTransfer` rejects wrong-mint accounts, (c) `executeSwap` succeeds with a non-bound input mint as long as the output is PDA-owned, (d) `emergencyWithdraw` sweeps a non-bound mint
+- [ ] 12.1 `npm run deploy:devnet` (use `solana program extend` first if `.so` outgrew the existing buffer) — owner action; needs the upgrade-authority keypair
+- [ ] 12.2 Smoke-test the backend round-trip against the new SDK: (a) `addAgent` captures the mint, (b) `executeTransfer` rejects wrong-mint accounts, (c) `executeSwap` succeeds with a non-bound input mint as long as the output is PDA-owned, (d) `emergencyWithdraw` sweeps a non-bound mint — owner action; runs after devnet redeploy
