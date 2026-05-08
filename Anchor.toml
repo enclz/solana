@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-enclz = "45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW"
+enclz = "4qiMuaM3DsRg6yse2pa3YMp1446e1BfPTsFuCuc69rjf"
 
 [programs.devnet]
-enclz = "45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW"
+enclz = "4qiMuaM3DsRg6yse2pa3YMp1446e1BfPTsFuCuc69rjf"
 
 [programs.mainnet]
-enclz = "45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW"
+enclz = "4qiMuaM3DsRg6yse2pa3YMp1446e1BfPTsFuCuc69rjf"
 
 [registry]
 url = "https://api.apr.dev"

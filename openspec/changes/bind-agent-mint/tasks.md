@@ -71,5 +71,5 @@
 
 ## 12. Deploy
 
-- [ ] 12.1 `npm run deploy:devnet` (use `solana program extend` first if `.so` outgrew the existing buffer) — owner action; needs the upgrade-authority keypair
-- [ ] 12.2 Smoke-test the backend round-trip against the new SDK: (a) `addAgent` captures the mint, (b) `executeTransfer` rejects wrong-mint accounts, (c) `executeSwap` succeeds with a non-bound input mint as long as the output is PDA-owned, (d) `emergencyWithdraw` sweeps a non-bound mint — owner action; runs after devnet redeploy
+- [x] 12.1 Closed prior devnet deployment (`45PiBcnkKhZbzb5GQDhJ9Rikwiz3DUzyoBwiKHbAFaLW`) and redeployed from scratch under a new program ID `4qiMuaM3DsRg6yse2pa3YMp1446e1BfPTsFuCuc69rjf` via `npm run deploy:devnet`. AgentWallet account-layout growth (115 → 147) is greenfield; existing PDAs at the old program ID are unreachable by the new program ID, which matches the proposal's no-migration policy. Reclaimed ~2.45 SOL from the closed program.
+- [ ] 12.2 Smoke-test the backend round-trip against the new SDK: (a) `addAgent` captures the mint, (b) `executeTransfer` rejects wrong-mint accounts, (c) `executeSwap` succeeds with a non-bound input mint as long as the output is PDA-owned, (d) `emergencyWithdraw` sweeps a non-bound mint — owner action; runs after backend updates to the new program ID and bumps `@enclz/sdk` to 0.3.0
