@@ -177,7 +177,11 @@ describe("enclz execute_swap (mocha + anchor)", function () {
       provider.connection,
       owner,
       outputMint,
-      agent
+      agent,
+      undefined,
+      undefined,
+      undefined,
+      true // allowOwnerOffCurve — agent_wallet is a PDA
     );
 
     await program.methods
