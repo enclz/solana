@@ -365,7 +365,6 @@ describe("enclz owner instructions (mocha + anchor)", function () {
         agentWallet: agent,
         agentTokenAccount: ata,
         destinationTokenAccount: destinationAta,
-        mint,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([owner])

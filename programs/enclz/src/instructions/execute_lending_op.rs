@@ -38,7 +38,7 @@ pub struct ExecuteLendingOpAccountConstraints<'info> {
     #[account(
         mut,
         constraint = agent_token_account.owner == agent_wallet.key() @ EnclzError::InvalidTokenAccount,
-        constraint = agent_token_account.mint == protocol_fee_token_account.mint @ EnclzError::InvalidMint,
+        constraint = agent_token_account.mint == agent_wallet.mint @ EnclzError::InvalidMint,
     )]
     pub agent_token_account: Box<Account<'info, TokenAccount>>,
 
@@ -51,6 +51,7 @@ pub struct ExecuteLendingOpAccountConstraints<'info> {
     #[account(
         mut,
         constraint = protocol_fee_token_account.owner == group_config.protocol_fee_wallet @ EnclzError::InvalidFeeAccount,
+        constraint = protocol_fee_token_account.mint == agent_wallet.mint @ EnclzError::InvalidMint,
     )]
     pub protocol_fee_token_account: Box<Account<'info, TokenAccount>>,
 

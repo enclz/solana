@@ -64,6 +64,7 @@ pub fn handle_add_agent(
 ) -> Result<()> {
     let agent_wallet = &mut context.accounts.agent_wallet;
     agent_wallet.group = context.accounts.group_config.key();
+    agent_wallet.mint = context.accounts.mint.key();
     agent_wallet.display_name = display_name;
     agent_wallet.daily_limit = daily_limit.unwrap_or(DEFAULT_DAILY_LIMIT);
     agent_wallet.per_tx_limit = per_tx_limit.unwrap_or(DEFAULT_PER_TX_LIMIT);

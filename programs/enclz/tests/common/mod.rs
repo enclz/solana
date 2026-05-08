@@ -317,7 +317,6 @@ pub fn emergency_withdraw_instruction(
     agent_wallet: &Pubkey,
     agent_token_account: &Pubkey,
     destination_token_account: &Pubkey,
-    mint: &Pubkey,
     agent_index: u8,
 ) -> Instruction {
     let data = enclz::instruction::EmergencyWithdraw { agent_index }.data();
@@ -329,7 +328,6 @@ pub fn emergency_withdraw_instruction(
             AccountMeta::new_readonly(*agent_wallet, false),
             AccountMeta::new(*agent_token_account, false),
             AccountMeta::new(*destination_token_account, false),
-            AccountMeta::new_readonly(*mint, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data,
@@ -450,6 +448,7 @@ pub fn execute_transfer_instruction(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_swap_instruction(
     program_id: &Pubkey,
     backend_operator: &Pubkey,
@@ -458,7 +457,9 @@ pub fn execute_swap_instruction(
     from_token_account: &Pubkey,
     to_token_account: &Pubkey,
     whitelist_entry: &Pubkey,
+    input_mint: &Pubkey,
     protocol_fee_token_account: &Pubkey,
+    protocol_fee_wallet: &Pubkey,
     jupiter_program: &Pubkey,
     amount_in: u64,
     minimum_amount_out: u64,
@@ -476,15 +477,18 @@ pub fn execute_swap_instruction(
     }
     .data();
     let mut accounts = vec![
-        AccountMeta::new_readonly(*backend_operator, true),
+        AccountMeta::new(*backend_operator, true),
         AccountMeta::new_readonly(*group_config, false),
         AccountMeta::new(*agent_wallet, false),
         AccountMeta::new(*from_token_account, false),
         AccountMeta::new(*to_token_account, false),
         AccountMeta::new_readonly(*whitelist_entry, false),
+        AccountMeta::new_readonly(*input_mint, false),
         AccountMeta::new(*protocol_fee_token_account, false),
+        AccountMeta::new_readonly(*protocol_fee_wallet, false),
         AccountMeta::new_readonly(*jupiter_program, false),
         AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+        AccountMeta::new_readonly(ASSOCIATED_TOKEN_PROGRAM_ID, false),
         AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
     ];
     accounts.extend(remaining_accounts);
