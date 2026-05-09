@@ -82,7 +82,7 @@ All four SHALL pass `--filepath target/idl/enclz.json` and the program ID `67i3u
 
 ### Requirement: Public positioning relative to "no SDK required"
 
-The SDK README and the `docs/` submodule SHALL frame `@enclz/sdk` as program-level bindings for direct on-chain callers, distinct from the agent integration path covered by the Agent REST API + `AGENT_SKILL.md` + MCP server. Specifically:
+The SDK README and the `docs/` submodule SHALL frame `@enclz/sdk` as program-level bindings for direct on-chain callers, distinct from the agent integration path covered by the Agent REST API + `SKILL.md` + MCP server. Specifically:
 1. `sdk/README.md` SHALL include in its first or second paragraph a sentence pointing readers who are integrating an AI agent to the Agent REST API + MCP server instead.
 2. `docs/REQUIREMENTS.md` SHALL include a "Program Integration Resources" section that names `@enclz/sdk` and the on-chain IDL channel, sibling to the existing "Agent Integration Resources" section.
 3. `docs/MARKETING.md` SHALL include a footnote on the "No SDK required" competitive comparison clarifying that the claim refers to agent integration and that direct program integrators may use `@enclz/sdk`.
