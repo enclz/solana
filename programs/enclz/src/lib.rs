@@ -21,7 +21,7 @@ solana_security_txt::security_txt! {
     policy: "https://github.com/enclz/solana/blob/main/SECURITY.md",
     preferred_languages: "en",
     source_code: "https://github.com/enclz/solana",
-    source_release: "v0.3.0",
+    source_release: "v0.4.0",
     auditors: "None"
 }
 
