@@ -78,6 +78,7 @@ pub fn handle_add_agent(
 
     let intra_group_entry = &mut context.accounts.intra_group_entry;
     intra_group_entry.label = display_name;
+    intra_group_entry.target = context.accounts.agent_wallet.key();
     intra_group_entry.added_by = context.accounts.owner.key();
     intra_group_entry.entry_type = entry_type::INTRA_GROUP;
     intra_group_entry.ttl_expires_at = 0;

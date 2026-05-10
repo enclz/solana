@@ -128,6 +128,7 @@ fn set_clock(setup: &mut Setup, unix_timestamp: i64) {
 
 fn execute_transfer(
     setup: &mut Setup,
+    recipient_wallet: Pubkey,
     to_token_account: Pubkey,
     whitelist_entry: Pubkey,
     amount: u64,
@@ -141,6 +142,8 @@ fn execute_transfer(
         &owner_pubkey,
         &setup.agent_pda,
         &setup.agent_token_account,
+        &recipient_wallet,
+        &setup.mint,
         &to_token_account,
         &whitelist_entry,
         &setup.protocol_fee_token_account,
@@ -191,17 +194,28 @@ fn execute_transfer_to_intra_group_recipient_succeeds_with_fee_split() {
         .unwrap();
 
     let amount = 1_000_000;
-    let result = execute_transfer(&mut setup, recipient_token_account, recipient_entry, amount, 0);
+    let result = execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        recipient_entry,
+        amount,
+        0,
+    );
     assert!(result.is_ok(), "transfer should succeed: {:?}", result);
 
-    assert_eq!(setup.context.token_balance(&recipient_token_account), 999_000);
+    // With additive fee, recipient receives exactly `amount`, not amount - fee.
+    assert_eq!(
+        setup.context.token_balance(&recipient_token_account),
+        1_000_000
+    );
     assert_eq!(
         setup.context.token_balance(&setup.protocol_fee_token_account),
         1_000
     );
     assert_eq!(
         setup.context.token_balance(&setup.agent_token_account),
-        5_000_000 - 1_000_000
+        5_000_000 - 1_001_000
     );
 
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -229,7 +243,14 @@ fn execute_transfer_to_external_recipient_increments_amount_used() {
         5_000_000,
     );
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_000_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         1_000_000,
+         0,
+    );
     assert!(result.is_ok());
 
     let entry = setup.context.deserialize_whitelist(&entry_pda);
@@ -281,8 +302,14 @@ fn execute_transfer_to_protocol_recipient_does_not_change_amount_used() {
         &protocol_target.pubkey(),
     );
 
-    let result =
-        execute_transfer(&mut setup, recipient_token_account, protocol_entry, 1_000_000, 0);
+    let result = execute_transfer(
+        &mut setup,
+        protocol_target.pubkey(),
+        recipient_token_account,
+        protocol_entry,
+        1_000_000,
+        0,
+    );
     assert!(result.is_ok(), "{:?}", result);
 
     let entry = setup.context.deserialize_whitelist(&protocol_entry);
@@ -290,7 +317,7 @@ fn execute_transfer_to_protocol_recipient_does_not_change_amount_used() {
 }
 
 #[test]
-fn fee_math_one_usdc_yields_999_000_net_and_1_000_fee() {
+fn fee_math_one_usdc_yields_1_000_000_to_recipient_and_1_000_fee() {
     let mut setup = setup_with_funded_agent(2_000_000);
     let now = current_unix_time(&setup);
     let recipient_owner = Keypair::new();
@@ -308,10 +335,18 @@ fn fee_math_one_usdc_yields_999_000_net_and_1_000_fee() {
         5_000_000,
     );
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_000_000, 0).unwrap();
+    execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        1_000_000,
+        0,
+    )
+    .unwrap();
     assert_eq!(
         setup.context.token_balance(&recipient_token_account),
-        999_000
+        1_000_000
     );
     assert_eq!(
         setup.context.token_balance(&setup.protocol_fee_token_account),
@@ -338,7 +373,15 @@ fn spent_today_counts_gross_amount() {
         5_000_000,
     );
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_000_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    1_000_000,
+    0,
+    )
+    .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.spent_today, 1_000_000); // not 999_000
 }
@@ -362,7 +405,14 @@ fn stale_nonce_rejects_and_leaves_state_unchanged() {
         5_000_000,
     );
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 99);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         500_000,
+         99,
+    );
     assert_anchor_error(result, EnclzError::NonceMismatch);
 
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -392,13 +442,28 @@ fn replay_rejects_second_call_with_same_nonce() {
         5_000_000,
     );
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    0,
+    )
+    .unwrap();
     // Advance the blockhash so the runtime doesn't reject the second
     // submission as `AlreadyProcessed` before it reaches the program. In real
     // RPC use, the operator would resign with a fresh blockhash but reuse the
     // nonce; expire_blockhash() simulates that.
     setup.context.svm.expire_blockhash();
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         500_000,
+         0,
+    );
     assert_anchor_error(result, EnclzError::NonceMismatch);
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.operator_nonce, 1);
@@ -424,7 +489,14 @@ fn per_tx_limit_exceeded_rejects() {
     );
 
     // Default per_tx_limit is 1_000_000; 1_500_000 should reject.
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_500_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         1_500_000,
+         0,
+    );
     assert_anchor_error(result, EnclzError::PerTxLimitExceeded);
 }
 
@@ -461,7 +533,14 @@ fn daily_limit_exceeded_rejects_after_accumulated_spend() {
     account.data = buffer;
     setup.context.svm.set_account(setup.agent_pda, account).unwrap();
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 1_000_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         1_000_000,
+         0,
+    );
     assert_anchor_error(result, EnclzError::DailyLimitExceeded);
 }
 
@@ -497,7 +576,14 @@ fn hourly_cap_reached_rejects() {
     account.data = buffer;
     setup.context.svm.set_account(setup.agent_pda, account).unwrap();
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         500_000,
+         0,
+    );
     assert_anchor_error(result, EnclzError::HourlyCapExceeded);
 }
 
@@ -518,6 +604,7 @@ fn missing_whitelist_entry_rejects() {
 
     let result = execute_transfer(
         &mut setup,
+        recipient_owner.pubkey(),
         recipient_token_account,
         nonexistent_entry,
         500_000,
@@ -550,7 +637,14 @@ fn external_entry_past_ttl_rejects() {
     );
 
     set_clock(&mut setup, now + 2_000);
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         500_000,
+         0,
+    );
     assert_anchor_error(result, EnclzError::WhitelistExpired);
 }
 
@@ -580,7 +674,14 @@ fn external_entry_amount_exhausted_rejects_when_projected_exceeds_cap() {
     account.data = buffer;
     setup.context.svm.set_account(entry_pda, account).unwrap();
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
+    let result = execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
+    );
     assert_anchor_error(result, EnclzError::WhitelistAmountExhausted);
 }
 
@@ -614,6 +715,8 @@ fn non_operator_signer_rejects_via_has_one() {
         &owner_pubkey,
         &setup.agent_pda,
         &setup.agent_token_account,
+        &recipient_owner.pubkey(),
+        &setup.mint,
         &recipient_token_account,
         &entry_pda,
         &setup.protocol_fee_token_account,
@@ -645,7 +748,15 @@ fn rotated_operator_invalidates_previous_operator() {
     );
 
     // Sanity: original operator works.
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+    execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
+    )
+    .unwrap();
 
     // Rotate to a new operator.
     let new_operator = Keypair::new();
@@ -661,8 +772,14 @@ fn rotated_operator_invalidates_previous_operator() {
     setup.context.send_signed(rotate, &[&owner_keypair]).unwrap();
 
     // Old operator's call now fails.
-    let stale_result =
-        execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 1);
+    let stale_result = execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        1,
+    );
     assert_anchor_error(stale_result, EnclzError::Unauthorized);
 }
 
@@ -700,6 +817,8 @@ fn from_token_account_owner_mismatch_rejects() {
         &owner_pubkey,
         &setup.agent_pda,
         &bystander_ata, // wrong from
+        &recipient_owner.pubkey(),
+        &setup.mint,
         &recipient_token_account,
         &entry_pda,
         &setup.protocol_fee_token_account,
@@ -733,7 +852,27 @@ fn mint_mismatch_between_from_and_to_rejects() {
         5_000_000,
     );
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0);
+    // Pass `other_mint` as the mint account — the mint constraint
+    // `mint.key() == agent_wallet.mint` rejects before any ATA derivation.
+    let owner_pubkey = setup.context.owner.pubkey();
+    let instruction = execute_transfer_instruction(
+        &setup.context.program_id,
+        &setup.backend_operator.pubkey(),
+        &setup.group_pda,
+        &owner_pubkey,
+        &setup.agent_pda,
+        &setup.agent_token_account,
+        &recipient_owner.pubkey(),
+        &other_mint,
+        &recipient_token_account,
+        &entry_pda,
+        &setup.protocol_fee_token_account,
+        500_000,
+        0,
+        0,
+    );
+    let operator = setup.backend_operator.insecure_clone();
+    let result = setup.context.send_signed(instruction, &[&operator]);
     assert_anchor_error(result, EnclzError::InvalidMint);
 }
 
@@ -772,6 +911,8 @@ fn protocol_fee_account_mint_mismatch_rejects() {
         &owner_pubkey,
         &setup.agent_pda,
         &setup.agent_token_account,
+        &recipient_owner.pubkey(),
+        &setup.mint,
         &recipient_token_account,
         &entry_pda,
         &bad_fee_ata,
@@ -818,6 +959,8 @@ fn protocol_fee_owner_mismatch_rejects() {
         &owner_pubkey,
         &setup.agent_pda,
         &setup.agent_token_account,
+        &recipient_owner.pubkey(),
+        &setup.mint,
         &recipient_token_account,
         &entry_pda,
         &attacker_fee_ata,
@@ -831,11 +974,10 @@ fn protocol_fee_owner_mismatch_rejects() {
 }
 
 #[test]
-fn whitelist_seed_bound_to_to_token_account_owner() {
-    // The whitelist PDA seed is derived from `to_token_account.owner`. Pairing a
-    // valid whitelist PDA with an ATA whose owner doesn't match the seed must
-    // reject — this is the central "no whitelist bypass via account
-    // substitution" guarantee.
+fn whitelist_seed_bound_to_recipient_wallet() {
+    // The whitelist PDA seed is derived from `recipient_wallet.key()`. Passing a
+    // whitelist entry whose seed does not match `recipient_wallet` must reject.
+    // This is the central "no whitelist bypass via account substitution" guarantee.
     let mut setup = setup_with_funded_agent(5_000_000);
     let now = current_unix_time(&setup);
     let approved_owner = Keypair::new();
@@ -856,17 +998,26 @@ fn whitelist_seed_bound_to_to_token_account_owner() {
         .context
         .whitelist_pda(&setup.group_pda, &approved_owner.pubkey())
         .0;
-    // ATA owned by a non-whitelisted address.
+    // Use unapproved_owner as recipient_wallet (no whitelist entry for them),
+    // but pass the whitelist PDA for approved_owner. The seed derivation
+    // uses recipient_wallet.key(), so the PDA won't match -> rejection.
     let unapproved_ata = setup.context.create_ata(
         &unapproved_owner,
         &setup.mint,
         &unapproved_owner.pubkey(),
     );
 
-    let result = execute_transfer(&mut setup, unapproved_ata, approved_pda, 500_000, 0);
+    let result = execute_transfer(
+        &mut setup,
+        unapproved_owner.pubkey(),
+        unapproved_ata,
+        approved_pda, // whitelist PDA is seeded on approved_owner, not unapproved_owner
+        500_000,
+        0,
+    );
     assert!(
         result.is_err(),
-        "PDA-target / ATA-owner mismatch should reject"
+        "whitelist PDA seed / recipient_wallet mismatch should reject"
     );
 }
 
@@ -893,13 +1044,29 @@ fn daily_counter_resets_after_midnight_crossing() {
     let day_index = now / 86_400;
     let day_start = day_index * 86_400;
     set_clock(&mut setup, day_start + 60);
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    0,
+    )
+    .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.spent_today, 500_000);
 
     // Advance to next day; spent_today must reset.
     set_clock(&mut setup, day_start + 86_400 + 60);
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 700_000, 1).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    700_000,
+    1,
+    )
+    .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.spent_today, 700_000);
 }
@@ -925,12 +1092,28 @@ fn hourly_counter_resets_after_hour_crossing() {
 
     let hour_top = (now / 3_600) * 3_600;
     set_clock(&mut setup, hour_top + 60);
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 100_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    100_000,
+    0,
+    )
+    .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.tx_count_this_hour, 1);
 
     set_clock(&mut setup, hour_top + 3_600 + 60);
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 100_000, 1).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    100_000,
+    1,
+    )
+    .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.tx_count_this_hour, 1);
 }
@@ -957,7 +1140,15 @@ fn auto_void_closes_pda_when_amount_exhausted_and_returns_rent_to_owner() {
     let pre_owner_lamports = setup.context.fetch_account(&setup.context.owner.pubkey()).lamports;
     let entry_rent = setup.context.fetch_account(&entry_pda).lamports;
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    0,
+    )
+    .unwrap();
 
     // The PDA is closed: account is gone or has zero lamports.
     let post = setup.context.try_fetch_account(&entry_pda);
@@ -998,8 +1189,23 @@ fn post_auto_void_transfer_fails_with_whitelist_violation() {
         500_000,
     );
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 100_000, 1);
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    0,
+    )
+    .unwrap();
+    let result = execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        100_000,
+        1,
+    );
     assert!(
         result.is_err(),
         "post-void transfer must fail (PDA gone -> whitelist_violation)"
@@ -1025,10 +1231,26 @@ fn auto_void_and_recreate_works_under_new_cap() {
         500_000,
     );
 
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 0).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    0,
+    )
+    .unwrap();
     // Re-create the entry with a fresh cap.
     let _ = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400, 1_000_000);
-    execute_transfer(&mut setup, recipient_token_account, entry_pda, 500_000, 1).unwrap();
+execute_transfer(
+    &mut setup,
+    recipient_owner.pubkey(),
+    recipient_token_account,
+    entry_pda,
+    500_000,
+    1,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -1076,6 +1298,8 @@ fn from_token_account_with_wrong_mint_rejects() {
         &owner_pubkey,
         &setup.agent_pda,
         &agent_b_ata, // wrong mint, right owner
+        &recipient_owner.pubkey(),
+        &setup.mint,
         &recipient_token_account,
         &entry_pda,
         &setup.protocol_fee_token_account,
@@ -1107,6 +1331,61 @@ fn zero_amount_rejects_with_invalid_amount() {
         5_000_000,
     );
 
-    let result = execute_transfer(&mut setup, recipient_token_account, entry_pda, 0, 0);
+    let result = execute_transfer(
+         &mut setup,
+         recipient_owner.pubkey(),
+         recipient_token_account,
+         entry_pda,
+         0,
+         0,
+    );
     assert_anchor_error(result, EnclzError::InvalidAmount);
+}
+
+#[test]
+fn init_if_needed_creates_recipient_ata_when_it_does_not_exist() {
+    let mut setup = setup_with_funded_agent(5_000_000);
+    let now = current_unix_time(&setup);
+    let recipient_owner = Keypair::new();
+    setup
+        .context
+        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
+    // Compute the expected ATA address but do NOT create it.
+    let recipient_token_account = setup
+        .context
+        .associated_token_address(&recipient_owner.pubkey(), &setup.mint);
+    let entry_pda = add_external_entry(
+        &mut setup,
+        recipient_owner.pubkey(),
+        now + 86_400,
+        5_000_000,
+    );
+
+    // Verify the ATA does not exist yet.
+    assert!(
+        setup.context.try_fetch_account(&recipient_token_account).is_none(),
+        "ATA must not exist before transfer"
+    );
+
+    let result = execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        1_000_000,
+        0,
+    );
+    assert!(result.is_ok(), "transfer with init_if_needed should succeed: {:?}", result);
+
+    // Verify the ATA was created by init_if_needed.
+    let ata = setup.context.try_fetch_account(&recipient_token_account);
+    assert!(ata.is_some(), "ATA must exist after init_if_needed");
+    assert_eq!(
+        setup.context.token_balance(&recipient_token_account),
+        1_000_000
+    );
+    assert_eq!(
+        setup.context.token_balance(&setup.protocol_fee_token_account),
+        1_000
+    );
 }

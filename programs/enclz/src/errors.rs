@@ -30,4 +30,8 @@ pub enum EnclzError {
     InvalidFeeAccount,
     #[msg("Token account owner does not match the expected agent_wallet PDA")]
     InvalidTokenAccount,
+    #[msg("Recipient is the protocol fee wallet or the agent PDA")]
+    RecipientInvalid,
+    #[msg("Whitelist entry type is not recognized")]
+    InvalidEntryType,
 }

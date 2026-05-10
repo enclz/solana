@@ -1,13 +1,13 @@
 # transfer-execution Specification
 
 ## Purpose
-TBD - created by archiving change add-execute-transfer. Update Purpose after archive.
+execute_transfer instruction — enforced transfer of the bound SPL token from an agent wallet to a whitelisted recipient. Handles nonce-based replay protection, spend-limit checks, whitelist entry validation, protocol fee deduction, and optional auto-void of capped external entries.
 ## Requirements
 ### Requirement: execute_transfer instruction signature and account constraints
 
 The program SHALL expose `execute_transfer(amount: u64, expected_nonce: u64, agent_index: u8)` callable only by the `backend_operator` recorded on the agent's `GroupConfig`. The `agent_index` parameter reconstructs the `agent_wallet` PDA seed for the SPL token CPI signer; instruction args remain (`amount`, `expected_nonce`) plus this implementation-required index.
 
-Required accounts: `backend_operator` (signer), `group_config`, `group_owner` (writable, address-bound to `group_config.owner` — receives auto-void rent), `agent_wallet` (writable), `from_token_account` (writable, owner == agent_wallet PDA, **mint == `agent_wallet.mint`**), `to_token_account` (writable, **mint == `agent_wallet.mint`**), `whitelist_entry` (seeds derived from `to_token_account.owner`), `protocol_fee_token_account` (writable, owner == `group_config.protocol_fee_wallet`, **mint == `agent_wallet.mint`**), `token_program`, `system_program`. Mint binding is enforced absolutely against the mint that the agent was provisioned with at `add_agent` time, not via cross-leg parity — the operator cannot select the operating mint at transfer time.
+Required accounts: `backend_operator` (signer), `group_config`, `group_owner` (writable, address-bound to `group_config.owner` — receives auto-void rent), `agent_wallet` (writable), `from_token_account` (writable, owner == agent_wallet PDA, **mint == `agent_wallet.mint`**), `recipient_wallet` (unchecked, pubkey constrained != protocol_fee_wallet and != agent_wallet PDA), `to_token_account` (writable, init_if_needed via ATA with `recipient_wallet` as authority, **mint == `agent_wallet.mint`**), `whitelist_entry` (seeds derived from `recipient_wallet.key()`), `protocol_fee_token_account` (writable, owner == `group_config.protocol_fee_wallet`, **mint == `agent_wallet.mint`**), `mint` (account matching `agent_wallet.mint`), `token_program`, `associated_token_program`, `system_program`. Mint binding is enforced absolutely against the mint that the agent was provisioned with at `add_agent` time, not via cross-leg parity — the operator cannot select the operating mint at transfer time.
 
 #### Scenario: Non-operator signer rejected
 - **WHEN** any signer other than `GroupConfig.backend_operator` invokes `execute_transfer`
@@ -33,8 +33,20 @@ Required accounts: `backend_operator` (signer), `group_config`, `group_owner` (w
 - **WHEN** caller passes a `protocol_fee_token_account` whose `owner` is not `group_config.protocol_fee_wallet`
 - **THEN** Anchor account constraint rejects the transaction
 
-#### Scenario: Whitelist seed bound to to_token_account.owner
-- **WHEN** caller supplies a valid `whitelist_entry` PDA but `to_token_account.owner` does not match the PDA's seed target
+#### Scenario: to_token_account auto-created if missing
+- **WHEN** the recipient does not yet have an ATA for the agent's mint
+- **THEN** the `to_token_account` is initialized via `init_if_needed` with `backend_operator` as payer; the transfer proceeds normally
+
+#### Scenario: Recipient wallet equals protocol fee wallet
+- **WHEN** `recipient_wallet.key()` equals `group_config.protocol_fee_wallet`
+- **THEN** Anchor constraint rejects the transaction with `RecipientInvalid` before the duplicate-mut check fires
+
+#### Scenario: Recipient wallet equals agent PDA
+- **WHEN** `recipient_wallet.key()` equals `agent_wallet.key()`
+- **THEN** Anchor constraint rejects the transaction with `RecipientInvalid`
+
+#### Scenario: Whitelist seed bound to recipient_wallet
+- **WHEN** caller supplies a valid `whitelist_entry` PDA but `recipient_wallet.key()` does not match the PDA's seed target
 - **THEN** Anchor seed constraint rejects the transaction — no whitelist bypass possible via account substitution
 
 ### Requirement: Nonce check precedes all other validation
@@ -86,11 +98,11 @@ The instruction SHALL reject the transfer with the spec-mandated error variant w
 
 ### Requirement: Whitelist enforcement
 
-The instruction SHALL require that the supplied `whitelist_entry` PDA matches seeds `["whitelist", group_config, to_token_account.owner]` and exists. The seed is derived from `to_token_account.owner` — not an independent `recipient` argument — so it is impossible to pair a valid whitelist PDA with an unwhitelisted destination ATA. For `entry_type == 1` it SHALL additionally enforce TTL and amount-cap.
+The instruction SHALL require that the supplied `whitelist_entry` PDA matches seeds `["whitelist", group_config, recipient_wallet.key()]` and exists. The seed is derived from `recipient_wallet.key()` (not from `to_token_account.owner`, since the ATA may be uninitialized at resolution time) — so it is impossible to pair a valid whitelist PDA with an unwhitelisted destination. For `entry_type == 1` it SHALL additionally enforce TTL and amount-cap.
 
 #### Scenario: Recipient not whitelisted
 - **WHEN** no `WhitelistEntry` PDA exists for the recipient address
-- **THEN** the call fails with `WhitelistViolation`
+- **THEN** Anchor's typed account constraint rejects the transaction with `AccountNotInitialized` (3012) during account resolution, before the handler runs; the backend translates this to `whitelist_violation` for the REST response
 
 #### Scenario: External entry expired
 - **WHEN** `entry_type == 1` and `now > ttl_expires_at`
@@ -110,11 +122,15 @@ The instruction SHALL require that the supplied `whitelist_entry` PDA matches se
 
 ### Requirement: Protocol fee deduction
 
-The instruction SHALL compute `protocol_fee = amount * 10 / 10_000`, transfer `net = amount - fee` to the recipient ATA, and transfer `protocol_fee` to the `protocol_fee_token_account`. Both transfers happen via `token::transfer` CPI signed by the agent wallet PDA.
+The instruction SHALL compute `protocol_fee = ceil(amount * 10 / 10_000)` using integer ceil arithmetic (`(amount * 10 + 9999) / 10_000`), compute `total = amount + protocol_fee`, transfer `amount` to the recipient ATA (the exact requested amount), and transfer `protocol_fee` to the `protocol_fee_token_account`. Both transfers happen via `token::transfer` CPI signed by the agent wallet PDA. The total drained from the agent's `from_token_account` is `total` (= `amount + protocol_fee`).
 
-#### Scenario: Fee math
+#### Scenario: Fee math with standard amount
 - **WHEN** `amount = 1_000_000` (1 USDC)
-- **THEN** `protocol_fee == 1_000` and `net == 999_000`; both ATAs reflect the transfers
+- **THEN** `protocol_fee == 1_000` and `total == 1_001_000`; recipient receives exactly `1_000_000`, fee wallet receives `1_000`
+
+#### Scenario: Fee math with small amount
+- **WHEN** `amount = 99`
+- **THEN** `protocol_fee == 1` (ceil) and `total == 100`; recipient receives exactly `99`, fee wallet receives `1`
 
 #### Scenario: Fee transfer failure aborts whole instruction
 - **WHEN** the fee leg fails (e.g., fee ATA missing)
