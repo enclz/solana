@@ -82,6 +82,14 @@ The `solana-anchor-claude-skill` is pinned via `skills-lock.json` and applies wh
 
 The skill's "Do the whole thing" / "no placeholder tests" rules are load-bearing — don't write `tests/foo.spec.ts` that just asserts the program exists; integration tests must initialize accounts, send transactions, verify state changes.
 
+## Devnet deployments
+
+**Default to rotating the program ID on every devnet deploy.** This gives you a clean slate — all PDAs (GroupConfig, AgentWallet, WhitelistEntry) are derived from the program ID, so a new program ID means fresh state with no leftover accounts from previous deploys. Without rotation, PDAs persist across upgrades and there's no close instruction for GroupConfig or AgentWallet, so stale state accumulates and can cause test failures that look like program bugs.
+
+The deploy script (`migrations/deploy.ts`) auto-patches `declare_id!` and `Anchor.toml` when the keypair drifts, then rebuilds — so rotation is a single-step workflow: delete the keypair, rebuild, deploy. The old program and its PDAs sit orphaned on devnet at the old address, which is harmless.
+
+**Only skip rotation** when you explicitly need the existing onchain state (e.g., testing an upgrade path, preserving a whitelist you don't want to re-create). In that case, run the deploy script as-is — the idempotence check will skip the deploy if the binary hasn't changed.
+
 ## Toolchain notes
 
 - **Anchor 1.0.1's `anchor keys sync` rewrites `Anchor.toml`** and drops the per-cluster `[provider.devnet]` / `[provider.mainnet]` blocks (and the `[registry]` section). The blocks still parse correctly when restored — the normalizer just doesn't preserve them. If you ever run `keys sync` again, expect to re-add them and the unified program ID across `[programs.devnet]` / `[programs.mainnet]` (Anchor only updates `[programs.localnet]`).
