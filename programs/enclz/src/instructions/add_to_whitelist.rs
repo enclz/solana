@@ -39,18 +39,19 @@ pub fn handle_add_to_whitelist(
     let now = Clock::get()?.unix_timestamp;
 
     let (stored_ttl, stored_amount) = match entry_type {
-        INTRA_GROUP => return err!(EnclzError::Unauthorized),
+        INTRA_GROUP => return err!(EnclzError::InvalidEntryType),
         EXTERNAL => {
             require!(ttl_expires_at > now, EnclzError::InvalidTtl);
             require!(approved_amount > 0, EnclzError::InvalidAmount);
             (ttl_expires_at, approved_amount)
         }
         PROTOCOL => (0, 0),
-        _ => return err!(EnclzError::Unauthorized),
+        _ => return err!(EnclzError::InvalidEntryType),
     };
 
     let whitelist_entry = &mut context.accounts.whitelist_entry;
     whitelist_entry.label = label;
+    whitelist_entry.target = _target_address;
     whitelist_entry.added_by = context.accounts.owner.key();
     whitelist_entry.entry_type = entry_type;
     whitelist_entry.ttl_expires_at = stored_ttl;

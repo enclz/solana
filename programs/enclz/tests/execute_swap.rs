@@ -639,10 +639,11 @@ fn lazy_init_fee_ata_for_novel_mint() {
 #[test]
 fn fee_plus_net_property_pinned_by_lib_unit_test() {
     // Sanity-check the boundary cases here too so the property is documented
-    // alongside the swap-instruction tests.
+    // alongside the swap-instruction tests. With additive fee, total = amount +
+    // ceil(amount * 10 / 10000), so total - fee = amount.
     use enclz::util::fee::compute_fee;
-    for &amount in &[1u64, 100, 999, 1_000, 1_000_000, 10_050_000, u64::MAX / 2, u64::MAX] {
-        let (net, fee) = compute_fee(amount).unwrap();
-        assert_eq!(net.checked_add(fee), Some(amount), "amount = {amount}");
+    for &amount in &[1u64, 100, 999, 1_000, 1_000_000, 10_050_000, u64::MAX / 2] {
+        let (total, fee) = compute_fee(amount).unwrap();
+        assert_eq!(total.checked_sub(fee), Some(amount), "amount = {amount}");
     }
 }

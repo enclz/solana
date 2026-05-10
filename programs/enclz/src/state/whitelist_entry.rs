@@ -10,6 +10,7 @@ pub mod entry_type {
 #[derive(InitSpace)]
 pub struct WhitelistEntry {
     pub label: [u8; 32],
+    pub target: Pubkey,
     pub added_by: Pubkey,
     pub entry_type: u8,
     pub ttl_expires_at: i64,

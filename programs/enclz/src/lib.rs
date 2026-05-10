@@ -244,8 +244,8 @@ mod tests {
 
     #[test]
     fn init_space_whitelist_entry_matches_field_layout() {
-        // 32 (label) + 32 (added_by) + 1 (entry_type) + 8 (ttl) + 8 (approved) + 8 (used) + 1 (bump)
-        let expected = 32 + 32 + 1 + 8 + 8 + 8 + 1;
+        // 32 (label) + 32 (target) + 32 (added_by) + 1 (entry_type) + 8 (ttl) + 8 (approved) + 8 (used) + 1 (bump)
+        let expected = 32 + 32 + 32 + 1 + 8 + 8 + 8 + 1;
         assert_eq!(WhitelistEntry::INIT_SPACE, expected);
     }
 
@@ -307,6 +307,7 @@ mod tests {
         let mut cursor: &mut [u8] = &mut buf[8..];
         let value = WhitelistEntry {
             label: [0xCD; 32],
+            target: Pubkey::new_unique(),
             added_by: Pubkey::new_unique(),
             entry_type: state::whitelist_entry::entry_type::EXTERNAL,
             ttl_expires_at: 1_700_000_000,
@@ -382,5 +383,7 @@ mod tests {
         assert_eq!(EnclzError::InvalidMint as u32, 11);
         assert_eq!(EnclzError::InvalidFeeAccount as u32, 12);
         assert_eq!(EnclzError::InvalidTokenAccount as u32, 13);
+        assert_eq!(EnclzError::RecipientInvalid as u32, 14);
+        assert_eq!(EnclzError::InvalidEntryType as u32, 15);
     }
 }

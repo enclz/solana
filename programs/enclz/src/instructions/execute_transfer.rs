@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 use crate::constants::{WALLET_SEED, WHITELIST_SEED};
 use crate::errors::EnclzError;
@@ -16,6 +17,7 @@ use crate::util::time::{needs_daily_reset, needs_hourly_reset};
 #[derive(Accounts)]
 #[instruction(amount: u64, expected_nonce: u64, agent_index: u8)]
 pub struct ExecuteTransferAccountConstraints<'info> {
+    #[account(mut)]
     pub backend_operator: Signer<'info>,
 
     #[account(
@@ -46,15 +48,33 @@ pub struct ExecuteTransferAccountConstraints<'info> {
     )]
     pub from_token_account: Box<Account<'info, TokenAccount>>,
 
+    /// CHECK: pubkey validated against protocol-reserved accounts below.
+    /// When the recipient is the protocol_fee_wallet or agent PDA, the
+    /// `to_token_account` ATA would collide with `protocol_fee_token_account`
+    /// or `from_token_account` respectively, causing Anchor's mutable account
+    /// deduplication to reject before we could emit a clear error.
     #[account(
-        mut,
-        constraint = to_token_account.mint == agent_wallet.mint @ EnclzError::InvalidMint,
+        constraint = recipient_wallet.key() != group_config.protocol_fee_wallet @ EnclzError::RecipientInvalid,
+        constraint = recipient_wallet.key() != agent_wallet.key() @ EnclzError::RecipientInvalid,
+    )]
+    pub recipient_wallet: UncheckedAccount<'info>,
+
+    #[account(
+        constraint = mint.key() == agent_wallet.mint @ EnclzError::InvalidMint,
+    )]
+    pub mint: Box<Account<'info, Mint>>,
+
+    #[account(
+        init_if_needed,
+        payer = backend_operator,
+        associated_token::mint = mint,
+        associated_token::authority = recipient_wallet,
     )]
     pub to_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
-        seeds = [WHITELIST_SEED, group_config.key().as_ref(), to_token_account.owner.as_ref()],
+        seeds = [WHITELIST_SEED, group_config.key().as_ref(), recipient_wallet.key().as_ref()],
         bump = whitelist_entry.bump,
     )]
     pub whitelist_entry: Box<Account<'info, WhitelistEntry>>,
@@ -66,6 +86,7 @@ pub struct ExecuteTransferAccountConstraints<'info> {
     )]
     pub protocol_fee_token_account: Box<Account<'info, TokenAccount>>,
 
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -93,6 +114,8 @@ pub fn handle_execute_transfer(
         .ok_or(EnclzError::InvalidAmount)?;
 
     // Step 3: roll counters when the on-chain clock crossed the relevant boundary.
+    // Recipient-reserved-account guards (RecipientInvalid) are struct-level
+    // constraints on `recipient_wallet` — they fire before the handler body.
     let now = Clock::get()?.unix_timestamp;
     if needs_daily_reset(agent_wallet.last_spend_reset, now) {
         agent_wallet.spent_today = 0;
@@ -137,17 +160,15 @@ pub fn handle_execute_transfer(
             projected_used <= entry.approved_amount,
             EnclzError::WhitelistAmountExhausted
         );
-        // The require! above already rejects over-consumption, so this is
-        // effectively `projected_used == entry.approved_amount` — the
-        // exact-fill case where the cap is consumed and the entry should
-        // auto-void.
         should_void = projected_used >= entry.approved_amount;
     }
 
-    // Step 9: fee math.
-    let (net, fee) = compute_fee(amount)?;
+    // Step 9: fee math (additive — fee is added on top of amount).
+    let (_total, fee) = compute_fee(amount)?;
 
     // Step 10: two SPL `token::transfer` CPIs signed by the agent_wallet PDA.
+    // The recipient receives exactly `amount`; the fee is sent to the protocol
+    // fee wallet. Total drained from the agent = amount + fee = total.
     let group_key = context.accounts.group_config.key();
     let agent_bump = agent_wallet.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[
@@ -168,7 +189,7 @@ pub fn handle_execute_transfer(
             cpi_accounts,
             signer_seeds,
         );
-        token::transfer(cpi_context, net)?;
+        token::transfer(cpi_context, amount)?;
     }
 
     if fee > 0 {
@@ -185,16 +206,15 @@ pub fn handle_execute_transfer(
         token::transfer(cpi_context, fee)?;
     }
 
-    // Step 11: counters reflect gross amount (fee counts against the daily cap).
+    // Step 11: counters reflect the request amount (fee is an overhead paid by
+    // the agent, not spend against limits).
     agent_wallet.spent_today = projected_spent;
     agent_wallet.tx_count_this_hour = agent_wallet
         .tx_count_this_hour
         .checked_add(1)
         .ok_or(EnclzError::InvalidAmount)?;
 
-    // Step 12: external entries consume the approved cap; auto-void on exhaustion
-    // so a subsequent transfer fails with WhitelistViolation rather than
-    // WhitelistAmountExhausted (the PDA stops existing).
+    // Step 12: external entries consume the approved cap; auto-void on exhaustion.
     if entry_type_value == entry_type::EXTERNAL {
         let entry = &mut context.accounts.whitelist_entry;
         entry.amount_used = entry
@@ -203,9 +223,6 @@ pub fn handle_execute_transfer(
             .ok_or(EnclzError::InvalidAmount)?;
 
         if should_void {
-            // Conditional close: Anchor's `close = receiver` runs unconditionally
-            // at account resolution, so we invoke the AccountsClose trait
-            // manually only when the cap has been consumed.
             context
                 .accounts
                 .whitelist_entry

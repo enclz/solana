@@ -220,6 +220,7 @@ async function callExecuteTransfer(
   program: Program<Enclz>,
   fleet: ProvisionedFleet,
   ownerPubkey: PublicKey,
+  recipientWallet: PublicKey,
   recipientAta: PublicKey,
   whitelistEntry: PublicKey,
   amount: bigint,
@@ -238,9 +239,12 @@ async function callExecuteTransfer(
       groupOwner: ownerPubkey,
       agentWallet: fleet.agent,
       fromTokenAccount: fleet.agentAta,
+      recipientWallet,
+      mint: fleet.mint,
       toTokenAccount: recipientAta,
       whitelistEntry,
       protocolFeeTokenAccount: fleet.protocolFeeAta,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })
@@ -286,6 +290,7 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
         program,
         fleet,
         owner.publicKey,
+        merchantOwner.publicKey,
         merchantAta,
         merchantEntry,
         1_000_000n,
@@ -295,7 +300,8 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
 
     const merchantBalance = (await getAccount(provider.connection, merchantAta))
       .amount;
-    expect(merchantBalance.toString()).to.equal((999_000n * 5n).toString());
+    // With additive fee, recipient gets the full amount.
+    expect(merchantBalance.toString()).to.equal((1_000_000n * 5n).toString());
     const feeBalance = (
       await getAccount(provider.connection, fleet.protocolFeeAta)
     ).amount;
@@ -312,6 +318,7 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
         program,
         fleet,
         owner.publicKey,
+        merchantOwner.publicKey,
         merchantAta,
         merchantEntry,
         1_000_000n,
@@ -347,6 +354,7 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
       program,
       fleet,
       owner.publicKey,
+      merchantOwner.publicKey,
       merchantAta,
       merchantEntry,
       500_000n,
@@ -360,6 +368,7 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
         program,
         fleet,
         owner.publicKey,
+        merchantOwner.publicKey,
         merchantAta,
         merchantEntry,
         500_000n,
