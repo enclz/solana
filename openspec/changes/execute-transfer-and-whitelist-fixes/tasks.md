@@ -40,4 +40,4 @@
 - [x] 6.2 Run `anchor build` — program compiles cleanly
 - [x] 6.3 Rust integration tests pass with new accounts and fee math (75/75)
 - [x] 6.4 Regenerate SDK/IDL via `npm run build:sdk`
-- [ ] 6.5 Deploy to devnet
+- [x] 6.5 Deploy to devnet
