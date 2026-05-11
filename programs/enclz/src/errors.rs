@@ -7,6 +7,7 @@ pub enum EnclzError {
     #[msg("Whitelist entry has expired")]
     WhitelistExpired,
     #[msg("Whitelist entry approved amount has been exhausted")]
+    /// Retired — per-recipient spending cap removed. Never emitted.
     WhitelistAmountExhausted,
     #[msg("Daily spend limit exceeded")]
     DailyLimitExceeded,

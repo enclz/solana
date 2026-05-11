@@ -20,5 +20,4 @@ pub const PROTOCOL_FEE_BPS: u16 = 10;
 // keyed on the program ID, so the orchestrator can rotate to a new aggregator
 // version by updating the whitelist without redeploying this program.
 #[constant]
-pub const JUPITER_V6_PROGRAM_ID: Pubkey =
-    pubkey!("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4");
+pub const JUPITER_V6_PROGRAM_ID: Pubkey = pubkey!("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4");

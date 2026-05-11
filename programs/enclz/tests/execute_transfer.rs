@@ -2,8 +2,8 @@ mod common;
 
 use common::{
     add_agent_instruction, add_to_whitelist_instruction, assert_anchor_error,
-    execute_transfer_instruction, provision_group_with_router,
-    update_backend_operator_instruction, TestContext, STARTING_LAMPORTS,
+    execute_transfer_instruction, provision_group_with_router, update_backend_operator_instruction,
+    TestContext, STARTING_LAMPORTS,
 };
 use enclz::errors::EnclzError;
 use enclz::state::whitelist_entry::entry_type;
@@ -68,7 +68,12 @@ fn setup_with_funded_agent(initial_balance: u64) -> Setup {
     context.send_signed(add_agent, &[&owner_keypair]).unwrap();
 
     if initial_balance > 0 {
-        context.mint_to(&mint_authority, &mint, &agent_token_account, initial_balance);
+        context.mint_to(
+            &mint_authority,
+            &mint,
+            &agent_token_account,
+            initial_balance,
+        );
     }
 
     let protocol_fee_token_account =
@@ -89,12 +94,7 @@ fn setup_with_funded_agent(initial_balance: u64) -> Setup {
     }
 }
 
-fn add_external_entry(
-    setup: &mut Setup,
-    target: Pubkey,
-    ttl_expires_at: i64,
-    approved_amount: u64,
-) -> Pubkey {
+fn add_external_entry(setup: &mut Setup, target: Pubkey, ttl_expires_at: i64) -> Pubkey {
     let owner_pubkey = setup.context.owner.pubkey();
     let (entry_pda, _) = setup.context.whitelist_pda(&setup.group_pda, &target);
     let instruction = add_to_whitelist_instruction(
@@ -106,7 +106,6 @@ fn add_external_entry(
         MERCHANT_LABEL,
         entry_type::EXTERNAL,
         ttl_expires_at,
-        approved_amount,
     );
     let owner_keypair = setup.context.owner.insecure_clone();
     setup
@@ -174,8 +173,9 @@ fn execute_transfer_to_intra_group_recipient_succeeds_with_fee_split() {
     // add_to_whitelist (rejects), so use a protocol-typed entry as the
     // intra-group analogue (identical post-validation behavior).
     let owner_pubkey = setup.context.owner.pubkey();
-    let (recipient_entry, _) =
-        setup.context.whitelist_pda(&setup.group_pda, &recipient_owner.pubkey());
+    let (recipient_entry, _) = setup
+        .context
+        .whitelist_pda(&setup.group_pda, &recipient_owner.pubkey());
     let owner_keypair = setup.context.owner.insecure_clone();
     let instruction = add_to_whitelist_instruction(
         &setup.context.program_id,
@@ -185,7 +185,6 @@ fn execute_transfer_to_intra_group_recipient_succeeds_with_fee_split() {
         recipient_owner.pubkey(),
         MERCHANT_LABEL,
         entry_type::PROTOCOL,
-        0,
         0,
     );
     setup
@@ -210,7 +209,9 @@ fn execute_transfer_to_intra_group_recipient_succeeds_with_fee_split() {
         1_000_000
     );
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000
     );
     assert_eq!(
@@ -225,98 +226,6 @@ fn execute_transfer_to_intra_group_recipient_succeeds_with_fee_split() {
 }
 
 #[test]
-fn execute_transfer_to_external_recipient_increments_amount_used() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let now = current_unix_time(&setup);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
-
-    let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         1_000_000,
-         0,
-    );
-    assert!(result.is_ok());
-
-    let entry = setup.context.deserialize_whitelist(&entry_pda);
-    assert_eq!(entry.amount_used, 1_000_000);
-}
-
-#[test]
-fn execute_transfer_to_protocol_recipient_does_not_change_amount_used() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let (router_entry, _) =
-        setup.context.whitelist_pda(&setup.group_pda, &setup.dex_router);
-    let router_owner = Keypair::new();
-    setup.context.airdrop(&router_owner.pubkey(), STARTING_LAMPORTS);
-    // The PDA's seed is dex_router, but to_token_account.owner must equal
-    // dex_router for the seed-derived constraint to pass. We need an ATA owned
-    // by the dex_router pubkey itself. Since dex_router is a non-keypair pubkey
-    // (Pubkey::new_unique()) we can't create an ATA owned by it via SDK calls.
-    // Skip this test path by using a fresh protocol entry whose target == a
-    // keypair's pubkey.
-    let _ = router_entry;
-    let _ = router_owner;
-    let owner_pubkey = setup.context.owner.pubkey();
-    let owner_keypair = setup.context.owner.insecure_clone();
-    let protocol_target = Keypair::new();
-    setup
-        .context
-        .airdrop(&protocol_target.pubkey(), STARTING_LAMPORTS);
-    let (protocol_entry, _) = setup
-        .context
-        .whitelist_pda(&setup.group_pda, &protocol_target.pubkey());
-    let add_protocol = add_to_whitelist_instruction(
-        &setup.context.program_id,
-        &owner_pubkey,
-        &setup.group_pda,
-        &protocol_entry,
-        protocol_target.pubkey(),
-        MERCHANT_LABEL,
-        entry_type::PROTOCOL,
-        0,
-        0,
-    );
-    setup
-        .context
-        .send_signed(add_protocol, &[&owner_keypair])
-        .unwrap();
-    let recipient_token_account = setup.context.create_ata(
-        &protocol_target,
-        &setup.mint,
-        &protocol_target.pubkey(),
-    );
-
-    let result = execute_transfer(
-        &mut setup,
-        protocol_target.pubkey(),
-        recipient_token_account,
-        protocol_entry,
-        1_000_000,
-        0,
-    );
-    assert!(result.is_ok(), "{:?}", result);
-
-    let entry = setup.context.deserialize_whitelist(&protocol_entry);
-    assert_eq!(entry.amount_used, 0);
-}
-
-#[test]
 fn fee_math_one_usdc_yields_1_000_000_to_recipient_and_1_000_fee() {
     let mut setup = setup_with_funded_agent(2_000_000);
     let now = current_unix_time(&setup);
@@ -328,12 +237,7 @@ fn fee_math_one_usdc_yields_1_000_000_to_recipient_and_1_000_fee() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     execute_transfer(
         &mut setup,
@@ -349,7 +253,9 @@ fn fee_math_one_usdc_yields_1_000_000_to_recipient_and_1_000_fee() {
         1_000_000
     );
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000
     );
 }
@@ -366,20 +272,15 @@ fn spent_today_counts_gross_amount() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
+
+    execute_transfer(
         &mut setup,
         recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
-
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    1_000_000,
-    0,
+        recipient_token_account,
+        entry_pda,
+        1_000_000,
+        0,
     )
     .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -398,20 +299,15 @@ fn stale_nonce_rejects_and_leaves_state_unchanged() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         500_000,
-         99,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        99,
     );
     assert_anchor_error(result, EnclzError::NonceMismatch);
 
@@ -420,7 +316,12 @@ fn stale_nonce_rejects_and_leaves_state_unchanged() {
     assert_eq!(agent.spent_today, 0);
     assert_eq!(agent.tx_count_this_hour, 0);
     assert_eq!(setup.context.token_balance(&recipient_token_account), 0);
-    assert_eq!(setup.context.token_balance(&setup.protocol_fee_token_account), 0);
+    assert_eq!(
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
+        0
+    );
 }
 
 #[test]
@@ -435,20 +336,15 @@ fn replay_rejects_second_call_with_same_nonce() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
+
+    execute_transfer(
         &mut setup,
         recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
-
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    0,
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
     )
     .unwrap();
     // Advance the blockhash so the runtime doesn't reject the second
@@ -457,12 +353,12 @@ execute_transfer(
     // nonce; expire_blockhash() simulates that.
     setup.context.svm.expire_blockhash();
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         500_000,
-         0,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
     );
     assert_anchor_error(result, EnclzError::NonceMismatch);
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -481,21 +377,16 @@ fn per_tx_limit_exceeded_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        50_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Default per_tx_limit is 1_000_000; 1_500_000 should reject.
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         1_500_000,
-         0,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        1_500_000,
+        0,
     );
     assert_anchor_error(result, EnclzError::PerTxLimitExceeded);
 }
@@ -512,34 +403,31 @@ fn daily_limit_exceeded_rejects_after_accumulated_spend() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        50_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Manually pre-set spent_today close to the daily limit (10_000_000) so
     // a single 1_000_000 (at per_tx limit) tx would push past it.
     let mut account = setup.context.fetch_account(&setup.agent_pda);
-    let mut agent = anchor_lang::AccountDeserialize::try_deserialize(
-        &mut account.data.as_slice(),
-    )
-    .unwrap();
+    let mut agent =
+        anchor_lang::AccountDeserialize::try_deserialize(&mut account.data.as_slice()).unwrap();
     let agent_ref: &mut enclz::state::AgentWallet = &mut agent;
     agent_ref.spent_today = 9_500_000;
     let mut buffer = Vec::with_capacity(account.data.len());
     anchor_lang::AccountSerialize::try_serialize(agent_ref, &mut buffer).unwrap();
     account.data = buffer;
-    setup.context.svm.set_account(setup.agent_pda, account).unwrap();
+    setup
+        .context
+        .svm
+        .set_account(setup.agent_pda, account)
+        .unwrap();
 
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         1_000_000,
-         0,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        1_000_000,
+        0,
     );
     assert_anchor_error(result, EnclzError::DailyLimitExceeded);
 }
@@ -556,33 +444,30 @@ fn hourly_cap_reached_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        50_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Pre-set tx_count_this_hour to the cap.
     let mut account = setup.context.fetch_account(&setup.agent_pda);
-    let mut agent: enclz::state::AgentWallet = anchor_lang::AccountDeserialize::try_deserialize(
-        &mut account.data.as_slice(),
-    )
-    .unwrap();
+    let mut agent: enclz::state::AgentWallet =
+        anchor_lang::AccountDeserialize::try_deserialize(&mut account.data.as_slice()).unwrap();
     agent.tx_count_this_hour = agent.hourly_tx_cap;
     agent.last_hour_reset = now;
     let mut buffer = Vec::with_capacity(account.data.len());
     anchor_lang::AccountSerialize::try_serialize(&mut agent, &mut buffer).unwrap();
     account.data = buffer;
-    setup.context.svm.set_account(setup.agent_pda, account).unwrap();
+    setup
+        .context
+        .svm
+        .set_account(setup.agent_pda, account)
+        .unwrap();
 
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         500_000,
-         0,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
     );
     assert_anchor_error(result, EnclzError::HourlyCapExceeded);
 }
@@ -629,51 +514,9 @@ fn external_entry_past_ttl_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 1_000,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 1_000);
 
     set_clock(&mut setup, now + 2_000);
-    let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         500_000,
-         0,
-    );
-    assert_anchor_error(result, EnclzError::WhitelistExpired);
-}
-
-#[test]
-fn external_entry_amount_exhausted_rejects_when_projected_exceeds_cap() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let now = current_unix_time(&setup);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    // Tiny approved cap to make the second call exceed it.
-    let entry_pda =
-        add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400, 700_000);
-
-    // Force amount_used to a level where another 500_000 transfer would push past 700_000.
-    let mut account = setup.context.fetch_account(&entry_pda);
-    let mut entry: enclz::state::WhitelistEntry =
-        anchor_lang::AccountDeserialize::try_deserialize(&mut account.data.as_slice()).unwrap();
-    entry.amount_used = 300_000;
-    let mut buffer = Vec::with_capacity(account.data.len());
-    anchor_lang::AccountSerialize::try_serialize(&mut entry, &mut buffer).unwrap();
-    account.data = buffer;
-    setup.context.svm.set_account(entry_pda, account).unwrap();
-
     let result = execute_transfer(
         &mut setup,
         recipient_owner.pubkey(),
@@ -682,7 +525,7 @@ fn external_entry_amount_exhausted_rejects_when_projected_exceeds_cap() {
         500_000,
         0,
     );
-    assert_anchor_error(result, EnclzError::WhitelistAmountExhausted);
+    assert_anchor_error(result, EnclzError::WhitelistExpired);
 }
 
 #[test]
@@ -697,12 +540,7 @@ fn non_operator_signer_rejects_via_has_one() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     let attacker = Keypair::new();
     setup.context.airdrop(&attacker.pubkey(), STARTING_LAMPORTS);
@@ -740,12 +578,7 @@ fn rotated_operator_invalidates_previous_operator() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Sanity: original operator works.
     execute_transfer(
@@ -760,7 +593,9 @@ fn rotated_operator_invalidates_previous_operator() {
 
     // Rotate to a new operator.
     let new_operator = Keypair::new();
-    setup.context.airdrop(&new_operator.pubkey(), STARTING_LAMPORTS);
+    setup
+        .context
+        .airdrop(&new_operator.pubkey(), STARTING_LAMPORTS);
     let owner_pubkey = setup.context.owner.pubkey();
     let owner_keypair = setup.context.owner.insecure_clone();
     let rotate = update_backend_operator_instruction(
@@ -769,7 +604,10 @@ fn rotated_operator_invalidates_previous_operator() {
         &setup.group_pda,
         new_operator.pubkey(),
     );
-    setup.context.send_signed(rotate, &[&owner_keypair]).unwrap();
+    setup
+        .context
+        .send_signed(rotate, &[&owner_keypair])
+        .unwrap();
 
     // Old operator's call now fails.
     let stale_result = execute_transfer(
@@ -795,16 +633,13 @@ fn from_token_account_owner_mismatch_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // ATA owned by an unrelated keypair, not the agent_wallet PDA.
     let bystander = Keypair::new();
-    setup.context.airdrop(&bystander.pubkey(), STARTING_LAMPORTS);
+    setup
+        .context
+        .airdrop(&bystander.pubkey(), STARTING_LAMPORTS);
     let bystander_ata = setup
         .context
         .create_ata(&bystander, &setup.mint, &bystander.pubkey());
@@ -845,12 +680,7 @@ fn mint_mismatch_between_from_and_to_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &other_mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Pass `other_mint` as the mint account — the mint constraint
     // `mint.key() == agent_wallet.mint` rejects before any ATA derivation.
@@ -888,12 +718,7 @@ fn protocol_fee_account_mint_mismatch_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Substitute a different-mint fee ATA still owned by protocol_fee_wallet.
     let other_mint = setup.context.create_mint(&setup.mint_authority, 6);
@@ -937,12 +762,7 @@ fn protocol_fee_owner_mismatch_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Fee ATA owned by an attacker, not the configured protocol_fee_wallet.
     let attacker = Keypair::new();
@@ -988,12 +808,7 @@ fn whitelist_seed_bound_to_recipient_wallet() {
     setup
         .context
         .airdrop(&unapproved_owner.pubkey(), STARTING_LAMPORTS);
-    let _approved_entry = add_external_entry(
-        &mut setup,
-        approved_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let _approved_entry = add_external_entry(&mut setup, approved_owner.pubkey(), now + 86_400);
     let approved_pda = setup
         .context
         .whitelist_pda(&setup.group_pda, &approved_owner.pubkey())
@@ -1001,11 +816,10 @@ fn whitelist_seed_bound_to_recipient_wallet() {
     // Use unapproved_owner as recipient_wallet (no whitelist entry for them),
     // but pass the whitelist PDA for approved_owner. The seed derivation
     // uses recipient_wallet.key(), so the PDA won't match -> rejection.
-    let unapproved_ata = setup.context.create_ata(
-        &unapproved_owner,
-        &setup.mint,
-        &unapproved_owner.pubkey(),
-    );
+    let unapproved_ata =
+        setup
+            .context
+            .create_ata(&unapproved_owner, &setup.mint, &unapproved_owner.pubkey());
 
     let result = execute_transfer(
         &mut setup,
@@ -1033,24 +847,19 @@ fn daily_counter_resets_after_midnight_crossing() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 7 * 86_400,
-        50_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 7 * 86_400);
 
     // First transfer at the day's start.
     let day_index = now / 86_400;
     let day_start = day_index * 86_400;
     set_clock(&mut setup, day_start + 60);
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    0,
+    execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        500_000,
+        0,
     )
     .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -1058,13 +867,13 @@ execute_transfer(
 
     // Advance to next day; spent_today must reset.
     set_clock(&mut setup, day_start + 86_400 + 60);
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    700_000,
-    1,
+    execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        700_000,
+        1,
     )
     .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
@@ -1083,174 +892,34 @@ fn hourly_counter_resets_after_hour_crossing() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        50_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     let hour_top = (now / 3_600) * 3_600;
     set_clock(&mut setup, hour_top + 60);
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    100_000,
-    0,
+    execute_transfer(
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        100_000,
+        0,
     )
     .unwrap();
     let agent = setup.context.deserialize_agent(&setup.agent_pda);
     assert_eq!(agent.tx_count_this_hour, 1);
 
     set_clock(&mut setup, hour_top + 3_600 + 60);
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    100_000,
-    1,
-    )
-    .unwrap();
-    let agent = setup.context.deserialize_agent(&setup.agent_pda);
-    assert_eq!(agent.tx_count_this_hour, 1);
-}
-
-#[test]
-fn auto_void_closes_pda_when_amount_exhausted_and_returns_rent_to_owner() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let now = current_unix_time(&setup);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    // Approved cap exactly equals the single transfer amount.
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        500_000,
-    );
-    let pre_owner_lamports = setup.context.fetch_account(&setup.context.owner.pubkey()).lamports;
-    let entry_rent = setup.context.fetch_account(&entry_pda).lamports;
-
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    0,
-    )
-    .unwrap();
-
-    // The PDA is closed: account is gone or has zero lamports.
-    let post = setup.context.try_fetch_account(&entry_pda);
-    let closed = post.is_none()
-        || post
-            .as_ref()
-            .map(|a| a.lamports == 0 && a.data.is_empty())
-            .unwrap_or(true);
-    assert!(closed, "auto-voided PDA should be closed");
-
-    let post_owner_lamports = setup
-        .context
-        .fetch_account(&setup.context.owner.pubkey())
-        .lamports;
-    assert_eq!(
-        post_owner_lamports,
-        pre_owner_lamports + entry_rent,
-        "auto-void rent must return to orchestrator"
-    );
-}
-
-#[test]
-fn post_auto_void_transfer_fails_with_whitelist_violation() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let now = current_unix_time(&setup);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        500_000,
-    );
-
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    0,
-    )
-    .unwrap();
-    let result = execute_transfer(
+    execute_transfer(
         &mut setup,
         recipient_owner.pubkey(),
         recipient_token_account,
         entry_pda,
         100_000,
         1,
-    );
-    assert!(
-        result.is_err(),
-        "post-void transfer must fail (PDA gone -> whitelist_violation)"
-    );
-}
-
-#[test]
-fn auto_void_and_recreate_works_under_new_cap() {
-    let mut setup = setup_with_funded_agent(5_000_000);
-    let now = current_unix_time(&setup);
-    let recipient_owner = Keypair::new();
-    setup
-        .context
-        .airdrop(&recipient_owner.pubkey(), STARTING_LAMPORTS);
-    let recipient_token_account =
-        setup
-            .context
-            .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        500_000,
-    );
-
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    0,
     )
     .unwrap();
-    // Re-create the entry with a fresh cap.
-    let _ = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400, 1_000_000);
-execute_transfer(
-    &mut setup,
-    recipient_owner.pubkey(),
-    recipient_token_account,
-    entry_pda,
-    500_000,
-    1,
-    )
-    .unwrap();
+    let agent = setup.context.deserialize_agent(&setup.agent_pda);
+    assert_eq!(agent.tx_count_this_hour, 1);
 }
 
 #[test]
@@ -1268,27 +937,18 @@ fn from_token_account_with_wrong_mint_rejects() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Create a second mint B and a PDA-owned ATA for it (the kind of residual
     // an agent could accumulate via swaps under the new policy).
     let mint_b = setup.context.create_mint(&setup.mint_authority, 6);
     let owner_keypair = setup.context.owner.insecure_clone();
-    let agent_b_ata =
-        setup
-            .context
-            .create_ata(&owner_keypair, &mint_b, &setup.agent_pda);
-    setup.context.mint_to(
-        &setup.mint_authority,
-        &mint_b,
-        &agent_b_ata,
-        5_000_000,
-    );
+    let agent_b_ata = setup
+        .context
+        .create_ata(&owner_keypair, &mint_b, &setup.agent_pda);
+    setup
+        .context
+        .mint_to(&setup.mint_authority, &mint_b, &agent_b_ata, 5_000_000);
 
     let owner_pubkey = setup.context.owner.pubkey();
     let instruction = common::execute_transfer_instruction(
@@ -1324,20 +984,15 @@ fn zero_amount_rejects_with_invalid_amount() {
         setup
             .context
             .create_ata(&recipient_owner, &setup.mint, &recipient_owner.pubkey());
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     let result = execute_transfer(
-         &mut setup,
-         recipient_owner.pubkey(),
-         recipient_token_account,
-         entry_pda,
-         0,
-         0,
+        &mut setup,
+        recipient_owner.pubkey(),
+        recipient_token_account,
+        entry_pda,
+        0,
+        0,
     );
     assert_anchor_error(result, EnclzError::InvalidAmount);
 }
@@ -1354,16 +1009,14 @@ fn init_if_needed_creates_recipient_ata_when_it_does_not_exist() {
     let recipient_token_account = setup
         .context
         .associated_token_address(&recipient_owner.pubkey(), &setup.mint);
-    let entry_pda = add_external_entry(
-        &mut setup,
-        recipient_owner.pubkey(),
-        now + 86_400,
-        5_000_000,
-    );
+    let entry_pda = add_external_entry(&mut setup, recipient_owner.pubkey(), now + 86_400);
 
     // Verify the ATA does not exist yet.
     assert!(
-        setup.context.try_fetch_account(&recipient_token_account).is_none(),
+        setup
+            .context
+            .try_fetch_account(&recipient_token_account)
+            .is_none(),
         "ATA must not exist before transfer"
     );
 
@@ -1375,7 +1028,11 @@ fn init_if_needed_creates_recipient_ata_when_it_does_not_exist() {
         1_000_000,
         0,
     );
-    assert!(result.is_ok(), "transfer with init_if_needed should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "transfer with init_if_needed should succeed: {:?}",
+        result
+    );
 
     // Verify the ATA was created by init_if_needed.
     let ata = setup.context.try_fetch_account(&recipient_token_account);
@@ -1385,7 +1042,9 @@ fn init_if_needed_creates_recipient_ata_when_it_does_not_exist() {
         1_000_000
     );
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000
     );
 }

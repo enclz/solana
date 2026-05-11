@@ -95,7 +95,6 @@ pub mod enclz {
         label: [u8; 32],
         entry_type: u8,
         ttl_expires_at: i64,
-        approved_amount: u64,
     ) -> Result<()> {
         instructions::add_to_whitelist::handle_add_to_whitelist(
             context,
@@ -103,7 +102,6 @@ pub mod enclz {
             label,
             entry_type,
             ttl_expires_at,
-            approved_amount,
         )
     }
 
@@ -111,13 +109,11 @@ pub mod enclz {
         context: Context<RenewWhitelistEntryAccountConstraints>,
         target_address: Pubkey,
         ttl_expires_at: i64,
-        approved_amount: u64,
     ) -> Result<()> {
         instructions::renew_whitelist_entry::handle_renew_whitelist_entry(
             context,
             target_address,
             ttl_expires_at,
-            approved_amount,
         )
     }
 
@@ -193,8 +189,7 @@ mod tests {
         let owner = Pubkey::new_unique();
         let (expected, _bump) =
             Pubkey::find_program_address(&[GROUP_SEED, owner.as_ref()], &program_id());
-        let (actual, _) =
-            Pubkey::find_program_address(&[b"group", owner.as_ref()], &program_id());
+        let (actual, _) = Pubkey::find_program_address(&[b"group", owner.as_ref()], &program_id());
         assert_eq!(expected, actual);
     }
 
@@ -202,14 +197,10 @@ mod tests {
     fn agent_wallet_pda_matches_documented_seeds() {
         let group = Pubkey::new_unique();
         let idx: u8 = 3;
-        let (expected, _) = Pubkey::find_program_address(
-            &[WALLET_SEED, group.as_ref(), &[idx]],
-            &program_id(),
-        );
-        let (actual, _) = Pubkey::find_program_address(
-            &[b"wallet", group.as_ref(), &[idx]],
-            &program_id(),
-        );
+        let (expected, _) =
+            Pubkey::find_program_address(&[WALLET_SEED, group.as_ref(), &[idx]], &program_id());
+        let (actual, _) =
+            Pubkey::find_program_address(&[b"wallet", group.as_ref(), &[idx]], &program_id());
         assert_eq!(expected, actual);
     }
 
@@ -244,8 +235,8 @@ mod tests {
 
     #[test]
     fn init_space_whitelist_entry_matches_field_layout() {
-        // 32 (label) + 32 (target) + 32 (added_by) + 1 (entry_type) + 8 (ttl) + 8 (approved) + 8 (used) + 1 (bump)
-        let expected = 32 + 32 + 32 + 1 + 8 + 8 + 8 + 1;
+        // 32 (label) + 32 (target) + 32 (added_by) + 1 (entry_type) + 8 (ttl) + 1 (bump)
+        let expected = 32 + 32 + 32 + 1 + 8 + 1;
         assert_eq!(WhitelistEntry::INIT_SPACE, expected);
     }
 
@@ -311,8 +302,6 @@ mod tests {
             added_by: Pubkey::new_unique(),
             entry_type: state::whitelist_entry::entry_type::EXTERNAL,
             ttl_expires_at: 1_700_000_000,
-            approved_amount: 5_000_000,
-            amount_used: 0,
             bump: 253,
         };
         AnchorSerialize::serialize(&value, &mut cursor).expect("serialize must fit");
@@ -320,7 +309,6 @@ mod tests {
             AnchorDeserialize::deserialize(&mut &buf[8..8 + WhitelistEntry::INIT_SPACE])
                 .expect("decode must succeed");
         assert_eq!(decoded.entry_type, 1);
-        assert_eq!(decoded.approved_amount, 5_000_000);
         assert_eq!(decoded.bump, 253);
     }
 

@@ -82,8 +82,6 @@ pub fn handle_add_agent(
     intra_group_entry.added_by = context.accounts.owner.key();
     intra_group_entry.entry_type = entry_type::INTRA_GROUP;
     intra_group_entry.ttl_expires_at = 0;
-    intra_group_entry.approved_amount = 0;
-    intra_group_entry.amount_used = 0;
     intra_group_entry.bump = context.bumps.intra_group_entry;
 
     let group_config = &mut context.accounts.group_config;

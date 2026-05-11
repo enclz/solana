@@ -14,7 +14,5 @@ pub struct WhitelistEntry {
     pub added_by: Pubkey,
     pub entry_type: u8,
     pub ttl_expires_at: i64,
-    pub approved_amount: u64,
-    pub amount_used: u64,
     pub bump: u8,
 }

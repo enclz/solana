@@ -50,8 +50,6 @@ pub fn handle_initialize_group(
     dex_router_entry.added_by = context.accounts.owner.key();
     dex_router_entry.entry_type = entry_type::PROTOCOL;
     dex_router_entry.ttl_expires_at = 0;
-    dex_router_entry.approved_amount = 0;
-    dex_router_entry.amount_used = 0;
     dex_router_entry.bump = context.bumps.dex_router_entry;
     Ok(())
 }

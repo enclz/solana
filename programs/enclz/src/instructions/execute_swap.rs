@@ -152,7 +152,10 @@ pub fn handle_execute_swap<'info>(
     if fee > 0 {
         let cpi_accounts = Transfer {
             from: context.accounts.from_token_account.to_account_info(),
-            to: context.accounts.protocol_fee_token_account.to_account_info(),
+            to: context
+                .accounts
+                .protocol_fee_token_account
+                .to_account_info(),
             authority: agent_wallet.to_account_info(),
         };
         let cpi_context = CpiContext::new_with_signer(

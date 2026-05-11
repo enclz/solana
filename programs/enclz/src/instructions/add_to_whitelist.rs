@@ -34,18 +34,16 @@ pub fn handle_add_to_whitelist(
     label: [u8; 32],
     entry_type: u8,
     ttl_expires_at: i64,
-    approved_amount: u64,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
-    let (stored_ttl, stored_amount) = match entry_type {
+    let stored_ttl = match entry_type {
         INTRA_GROUP => return err!(EnclzError::InvalidEntryType),
         EXTERNAL => {
             require!(ttl_expires_at > now, EnclzError::InvalidTtl);
-            require!(approved_amount > 0, EnclzError::InvalidAmount);
-            (ttl_expires_at, approved_amount)
+            ttl_expires_at
         }
-        PROTOCOL => (0, 0),
+        PROTOCOL => 0,
         _ => return err!(EnclzError::InvalidEntryType),
     };
 
@@ -55,8 +53,6 @@ pub fn handle_add_to_whitelist(
     whitelist_entry.added_by = context.accounts.owner.key();
     whitelist_entry.entry_type = entry_type;
     whitelist_entry.ttl_expires_at = stored_ttl;
-    whitelist_entry.approved_amount = stored_amount;
-    whitelist_entry.amount_used = 0;
     whitelist_entry.bump = context.bumps.whitelist_entry;
     Ok(())
 }

@@ -67,7 +67,12 @@ fn setup_with_funded_agent(initial_balance: u64) -> Setup {
     context.send_signed(add_agent, &[&owner_keypair]).unwrap();
 
     if initial_balance > 0 {
-        context.mint_to(&mint_authority, &mint, &agent_token_account, initial_balance);
+        context.mint_to(
+            &mint_authority,
+            &mint,
+            &agent_token_account,
+            initial_balance,
+        );
     }
 
     let protocol_fee_token_account =
@@ -98,7 +103,6 @@ fn add_protocol_entry(setup: &mut Setup, target: Pubkey, label: [u8; 32]) -> Pub
         label,
         entry_type::PROTOCOL,
         0,
-        0,
     );
     let owner_keypair = setup.context.owner.insecure_clone();
     setup
@@ -108,12 +112,7 @@ fn add_protocol_entry(setup: &mut Setup, target: Pubkey, label: [u8; 32]) -> Pub
     entry_pda
 }
 
-fn add_external_entry(
-    setup: &mut Setup,
-    target: Pubkey,
-    ttl_expires_at: i64,
-    approved_amount: u64,
-) -> Pubkey {
+fn add_external_entry(setup: &mut Setup, target: Pubkey, ttl_expires_at: i64) -> Pubkey {
     let owner_pubkey = setup.context.owner.pubkey();
     let (entry_pda, _) = setup.context.whitelist_pda(&setup.group_pda, &target);
     let instruction = add_to_whitelist_instruction(
@@ -125,7 +124,6 @@ fn add_external_entry(
         EXTERNAL_LABEL,
         entry_type::EXTERNAL,
         ttl_expires_at,
-        approved_amount,
     );
     let owner_keypair = setup.context.owner.insecure_clone();
     setup
@@ -142,7 +140,9 @@ fn pda_owned_output_ata(setup: &mut Setup, output_mint: &Pubkey) -> Pubkey {
     // ATA whose authority is any pubkey — no signature from the authority is
     // needed since the SPL ATA program signs with the deterministic seed.
     let payer = setup.context.owner.insecure_clone();
-    setup.context.create_ata(&payer, output_mint, &setup.agent_pda)
+    setup
+        .context
+        .create_ata(&payer, output_mint, &setup.agent_pda)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -221,7 +221,9 @@ fn successful_swap_deducts_fee_invokes_jupiter_and_increments_counters() {
     assert!(result.is_ok(), "swap should succeed: {result:?}");
 
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000,
         "10 bps fee on 1 USDC"
     );
@@ -246,9 +248,13 @@ fn successful_swap_deducts_fee_invokes_jupiter_and_increments_counters() {
 #[test]
 fn non_type_2_whitelist_entry_rejects() {
     let mut setup = setup_with_funded_agent(5_000_000);
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let target = Pubkey::new_unique();
-    let entry_pda = add_external_entry(&mut setup, target, now + 86_400, 5_000_000);
+    let entry_pda = add_external_entry(&mut setup, target, now + 86_400);
 
     let output_mint = setup.context.create_mint(&setup.mint_authority, 6);
     let to_ata = pda_owned_output_ata(&mut setup, &output_mint);
@@ -320,7 +326,11 @@ fn hourly_cap_reached_rejects() {
     let output_mint = setup.context.create_mint(&setup.mint_authority, 6);
     let to_ata = pda_owned_output_ata(&mut setup, &output_mint);
 
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let agent_pda = setup.agent_pda;
     setup.context.rewrite_agent(&agent_pda, |agent| {
         agent.tx_count_this_hour = agent.hourly_tx_cap;
@@ -390,7 +400,9 @@ fn from_token_account_owner_mismatch_rejects() {
 
     // ATA owned by a non-agent keypair.
     let bystander = Keypair::new();
-    setup.context.airdrop(&bystander.pubkey(), STARTING_LAMPORTS);
+    setup
+        .context
+        .airdrop(&bystander.pubkey(), STARTING_LAMPORTS);
     let bystander_ata = setup
         .context
         .create_ata(&bystander, &setup.mint, &bystander.pubkey());
@@ -423,7 +435,9 @@ fn to_token_account_third_party_owner_rejects() {
 
     // Output ATA owned by an unrelated keypair — custody pin must reject.
     let third_party = Keypair::new();
-    setup.context.airdrop(&third_party.pubkey(), STARTING_LAMPORTS);
+    setup
+        .context
+        .airdrop(&third_party.pubkey(), STARTING_LAMPORTS);
     let output_mint = setup.context.create_mint(&setup.mint_authority, 6);
     let third_party_ata =
         setup
@@ -466,18 +480,13 @@ fn swap_allows_arbitrary_input_mint_into_pda_owned_output() {
     let mint_c = setup.context.create_mint(&setup.mint_authority, 6);
 
     let agent_pda = setup.agent_pda;
-    let from_ata_b = setup
-        .context
-        .associated_token_address(&agent_pda, &mint_b);
+    let from_ata_b = setup.context.associated_token_address(&agent_pda, &mint_b);
     // create the agent ATA for mint B
     let payer = setup.context.owner.insecure_clone();
     setup.context.create_ata(&payer, &mint_b, &agent_pda);
-    setup.context.mint_to(
-        &setup.mint_authority,
-        &mint_b,
-        &from_ata_b,
-        5_000_000,
-    );
+    setup
+        .context
+        .mint_to(&setup.mint_authority, &mint_b, &from_ata_b, 5_000_000);
 
     // PDA-owned output ATA on mint C
     let to_ata_c = pda_owned_output_ata(&mut setup, &mint_c);
@@ -504,7 +513,10 @@ fn swap_allows_arbitrary_input_mint_into_pda_owned_output() {
         vec![0u8],
         vec![],
     );
-    assert!(result.is_ok(), "swap with non-bound mints should succeed: {result:?}");
+    assert!(
+        result.is_ok(),
+        "swap with non-bound mints should succeed: {result:?}"
+    );
 
     // spent_today must remain unchanged — swap path does not touch it.
     let agent = setup.context.deserialize_agent(&agent_pda);
@@ -520,7 +532,11 @@ fn swap_does_not_enforce_per_tx_or_daily_limit() {
     setup.context.add_stub_program(&stub_program_id);
     let router_entry = add_protocol_entry(&mut setup, stub_program_id, PROTOCOL_LABEL);
 
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let agent_pda = setup.agent_pda;
     setup.context.rewrite_agent(&agent_pda, |agent| {
         agent.spent_today = 9_500_000; // close to default daily_limit (10_000_000)
@@ -571,25 +587,19 @@ fn lazy_init_fee_ata_for_novel_mint() {
 
     let mint_b = setup.context.create_mint(&setup.mint_authority, 6);
     let agent_pda = setup.agent_pda;
-    let from_ata_b = setup
-        .context
-        .associated_token_address(&agent_pda, &mint_b);
+    let from_ata_b = setup.context.associated_token_address(&agent_pda, &mint_b);
     let payer = setup.context.owner.insecure_clone();
     setup.context.create_ata(&payer, &mint_b, &agent_pda);
-    setup.context.mint_to(
-        &setup.mint_authority,
-        &mint_b,
-        &from_ata_b,
-        5_000_000,
-    );
+    setup
+        .context
+        .mint_to(&setup.mint_authority, &mint_b, &from_ata_b, 5_000_000);
 
     let mint_c = setup.context.create_mint(&setup.mint_authority, 6);
     let to_ata_c = pda_owned_output_ata(&mut setup, &mint_c);
 
-    let fee_ata_b_addr = setup.context.associated_token_address(
-        &setup.protocol_fee_wallet.pubkey(),
-        &mint_b,
-    );
+    let fee_ata_b_addr = setup
+        .context
+        .associated_token_address(&setup.protocol_fee_wallet.pubkey(), &mint_b);
     // Confirm the fee ATA does NOT yet exist for mint B.
     assert!(
         setup.context.try_fetch_account(&fee_ata_b_addr).is_none(),

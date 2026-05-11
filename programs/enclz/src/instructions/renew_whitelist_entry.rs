@@ -27,7 +27,6 @@ pub fn handle_renew_whitelist_entry(
     context: Context<RenewWhitelistEntryAccountConstraints>,
     _target_address: Pubkey,
     ttl_expires_at: i64,
-    approved_amount: u64,
 ) -> Result<()> {
     let entry = &mut context.accounts.whitelist_entry;
     require!(
@@ -37,12 +36,7 @@ pub fn handle_renew_whitelist_entry(
 
     let now = Clock::get()?.unix_timestamp;
     require!(ttl_expires_at > now, EnclzError::InvalidTtl);
-    require!(
-        approved_amount >= entry.amount_used,
-        EnclzError::InvalidAmount
-    );
 
     entry.ttl_expires_at = ttl_expires_at;
-    entry.approved_amount = approved_amount;
     Ok(())
 }

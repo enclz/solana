@@ -77,7 +77,12 @@ fn setup_with_keypair_mint(initial_balance: u64) -> Setup {
     context.send_signed(add_agent, &[&owner_keypair]).unwrap();
 
     if initial_balance > 0 {
-        context.mint_to(&mint_authority, &mint, &agent_token_account, initial_balance);
+        context.mint_to(
+            &mint_authority,
+            &mint,
+            &agent_token_account,
+            initial_balance,
+        );
     }
 
     let protocol_fee_token_account =
@@ -141,7 +146,12 @@ fn setup_with_stub_mint(stub_program_id: &Pubkey, initial_balance: u64) -> Setup
     context.send_signed(add_agent, &[&owner_keypair]).unwrap();
 
     if initial_balance > 0 {
-        context.mint_to(&temp_authority, &mint, &agent_token_account, initial_balance);
+        context.mint_to(
+            &temp_authority,
+            &mint,
+            &agent_token_account,
+            initial_balance,
+        );
     }
 
     // Hand off MintTokens authority to the stub PDA.
@@ -156,7 +166,9 @@ fn setup_with_stub_mint(stub_program_id: &Pubkey, initial_balance: u64) -> Setup
     )
     .unwrap();
     let temp_clone = temp_authority.insecure_clone();
-    context.send_signed(set_authority_ix, &[&temp_clone]).unwrap();
+    context
+        .send_signed(set_authority_ix, &[&temp_clone])
+        .unwrap();
 
     let protocol_fee_token_account =
         context.create_ata(&protocol_fee_wallet, &mint, &protocol_fee_wallet.pubkey());
@@ -186,7 +198,6 @@ fn add_protocol_entry(setup: &mut Setup, target: Pubkey, label: [u8; 32]) -> Pub
         label,
         entry_type::PROTOCOL,
         0,
-        0,
     );
     let owner_keypair = setup.context.owner.insecure_clone();
     setup
@@ -196,12 +207,7 @@ fn add_protocol_entry(setup: &mut Setup, target: Pubkey, label: [u8; 32]) -> Pub
     entry_pda
 }
 
-fn add_external_entry(
-    setup: &mut Setup,
-    target: Pubkey,
-    ttl_expires_at: i64,
-    approved_amount: u64,
-) -> Pubkey {
+fn add_external_entry(setup: &mut Setup, target: Pubkey, ttl_expires_at: i64) -> Pubkey {
     let owner_pubkey = setup.context.owner.pubkey();
     let (entry_pda, _) = setup.context.whitelist_pda(&setup.group_pda, &target);
     let instruction = add_to_whitelist_instruction(
@@ -213,7 +219,6 @@ fn add_external_entry(
         PROTOCOL_LABEL,
         entry_type::EXTERNAL,
         ttl_expires_at,
-        approved_amount,
     );
     let owner_keypair = setup.context.owner.insecure_clone();
     setup
@@ -278,7 +283,9 @@ fn successful_deposit_deducts_fee_invokes_lending_and_increments_counters() {
     assert!(result.is_ok(), "deposit should succeed: {result:?}");
 
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000
     );
     // Net 999_000 stays in the agent ATA — the noop stub doesn't actually
@@ -328,7 +335,9 @@ fn successful_withdraw_deducts_fee_after_redeem_and_increments_counters() {
     assert!(result.is_ok(), "withdraw should succeed: {result:?}");
 
     assert_eq!(
-        setup.context.token_balance(&setup.protocol_fee_token_account),
+        setup
+            .context
+            .token_balance(&setup.protocol_fee_token_account),
         1_000
     );
     assert_eq!(
@@ -345,9 +354,13 @@ fn successful_withdraw_deducts_fee_after_redeem_and_increments_counters() {
 #[test]
 fn non_type_2_whitelist_entry_rejects() {
     let mut setup = setup_with_keypair_mint(5_000_000);
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let lending_target = Pubkey::new_unique();
-    let entry_pda = add_external_entry(&mut setup, lending_target, now + 86_400, 5_000_000);
+    let entry_pda = add_external_entry(&mut setup, lending_target, now + 86_400);
 
     let operator = setup.backend_operator.insecure_clone();
     let result = execute_lending_op(
@@ -415,7 +428,11 @@ fn daily_limit_exceeded_rejects() {
     let stub_program_id = Pubkey::new_unique();
     let lending_entry = add_protocol_entry(&mut setup, stub_program_id, PROTOCOL_LABEL);
 
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let agent_pda = setup.agent_pda;
     setup.context.rewrite_agent(&agent_pda, |agent| {
         agent.spent_today = 9_500_000;
@@ -444,7 +461,11 @@ fn hourly_cap_reached_rejects() {
     let stub_program_id = Pubkey::new_unique();
     let lending_entry = add_protocol_entry(&mut setup, stub_program_id, PROTOCOL_LABEL);
 
-    let now = setup.context.svm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let now = setup
+        .context
+        .svm
+        .get_sysvar::<solana_clock::Clock>()
+        .unix_timestamp;
     let agent_pda = setup.agent_pda;
     setup.context.rewrite_agent(&agent_pda, |agent| {
         agent.tx_count_this_hour = agent.hourly_tx_cap;

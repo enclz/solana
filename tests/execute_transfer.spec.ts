@@ -192,8 +192,7 @@ async function addExternalEntry(
   owner: Keypair,
   group: PublicKey,
   target: PublicKey,
-  ttlSeconds: number,
-  approvedAmount: bigint
+  ttlSeconds: number
 ): Promise<PublicKey> {
   const [entryPda] = findWhitelistPda(program.programId, group, target);
   const ttlExpiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
@@ -202,8 +201,7 @@ async function addExternalEntry(
       target,
       padDisplayName("merchant"),
       ENTRY_TYPE_EXTERNAL,
-      new BN(ttlExpiresAt),
-      new BN(approvedAmount.toString())
+      new BN(ttlExpiresAt)
     )
     .accounts({
       owner: owner.publicKey,
@@ -280,54 +278,28 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
       owner,
       fleet.group,
       merchantOwner.publicKey,
-      86_400,
-      5_000_000n // $5 cap
+      86_400
     );
 
-    // Five transfers of 1 USDC each totaling $5 — last one auto-voids.
-    for (let i = 0; i < 5; i++) {
-      await callExecuteTransfer(
-        program,
-        fleet,
-        owner.publicKey,
-        merchantOwner.publicKey,
-        merchantAta,
-        merchantEntry,
-        1_000_000n,
-        BigInt(i)
-      );
-    }
+    await callExecuteTransfer(
+      program,
+      fleet,
+      owner.publicKey,
+      merchantOwner.publicKey,
+      merchantAta,
+      merchantEntry,
+      1_000_000n,
+      0n
+    );
 
     const merchantBalance = (await getAccount(provider.connection, merchantAta))
       .amount;
     // With additive fee, recipient gets the full amount.
-    expect(merchantBalance.toString()).to.equal((1_000_000n * 5n).toString());
+    expect(merchantBalance.toString()).to.equal(1_000_000n.toString());
     const feeBalance = (
       await getAccount(provider.connection, fleet.protocolFeeAta)
     ).amount;
-    expect(feeBalance.toString()).to.equal((1_000n * 5n).toString());
-
-    // Whitelist PDA should now be closed.
-    const closed = await provider.connection.getAccountInfo(merchantEntry);
-    expect(closed).to.equal(null);
-
-    // 6th attempt fails — Anchor's seed constraint can't load a missing PDA.
-    let failed = false;
-    try {
-      await callExecuteTransfer(
-        program,
-        fleet,
-        owner.publicKey,
-        merchantOwner.publicKey,
-        merchantAta,
-        merchantEntry,
-        1_000_000n,
-        5n
-      );
-    } catch (error) {
-      failed = true;
-    }
-    expect(failed).to.equal(true);
+    expect(feeBalance.toString()).to.equal(1_000n.toString());
   });
 
   it("nonce replay: second submission with the same expected_nonce fails", async () => {
@@ -345,8 +317,7 @@ describe("enclz execute_transfer (mocha + anchor)", function () {
       owner,
       fleet.group,
       merchantOwner.publicKey,
-      86_400,
-      5_000_000n
+      86_400
     );
 
     // First submission succeeds.

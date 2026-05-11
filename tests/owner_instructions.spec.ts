@@ -198,7 +198,6 @@ describe("enclz owner instructions (mocha + anchor)", function () {
     );
     expect(routerEntry.entryType).to.equal(ENTRY_TYPE_PROTOCOL);
     expect(routerEntry.ttlExpiresAt.toString()).to.equal("0");
-    expect(routerEntry.approvedAmount.toString()).to.equal("0");
 
     const mint = await createMint(
       provider.connection,
@@ -230,7 +229,6 @@ describe("enclz owner instructions (mocha + anchor)", function () {
     );
     expect(intraEntry.entryType).to.equal(ENTRY_TYPE_INTRA_GROUP);
     expect(intraEntry.ttlExpiresAt.toString()).to.equal("0");
-    expect(intraEntry.approvedAmount.toString()).to.equal("0");
 
     const firstAtaState = await getAccount(provider.connection, first.ata);
     expect(firstAtaState.owner.equals(first.agent)).to.equal(true);
@@ -265,8 +263,7 @@ describe("enclz owner instructions (mocha + anchor)", function () {
         merchant,
         padDisplayName("acme-merchant"),
         ENTRY_TYPE_EXTERNAL,
-        new BN(initialTtl),
-        new BN(10_000_000)
+        new BN(initialTtl)
       )
       .accounts({
         owner: owner.publicKey,
@@ -281,11 +278,10 @@ describe("enclz owner instructions (mocha + anchor)", function () {
     );
     expect(merchantStateInitial.entryType).to.equal(ENTRY_TYPE_EXTERNAL);
     expect(merchantStateInitial.ttlExpiresAt.toNumber()).to.equal(initialTtl);
-    expect(merchantStateInitial.approvedAmount.toString()).to.equal("10000000");
 
     const renewedTtl = Math.floor(Date.now() / 1000) + 86_400;
     await program.methods
-      .renewWhitelistEntry(merchant, new BN(renewedTtl), new BN(20_000_000))
+      .renewWhitelistEntry(merchant, new BN(renewedTtl))
       .accounts({
         owner: owner.publicKey,
         groupConfig: group,
@@ -297,7 +293,6 @@ describe("enclz owner instructions (mocha + anchor)", function () {
       merchantEntry
     );
     expect(merchantStateRenewed.ttlExpiresAt.toNumber()).to.equal(renewedTtl);
-    expect(merchantStateRenewed.approvedAmount.toString()).to.equal("20000000");
     const [merchantRederived] = findWhitelistPda(
       program.programId,
       group,

@@ -4,7 +4,9 @@ use std::path::PathBuf;
 
 use anchor_lang::solana_program::program_pack::Pack;
 use anchor_lang::{AccountDeserialize, InstructionData};
-use anchor_spl::associated_token::{get_associated_token_address, ID as ASSOCIATED_TOKEN_PROGRAM_ID};
+use anchor_spl::associated_token::{
+    get_associated_token_address, ID as ASSOCIATED_TOKEN_PROGRAM_ID,
+};
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use enclz::constants::{GROUP_SEED, WALLET_SEED, WHITELIST_SEED};
 use enclz::errors::EnclzError;
@@ -21,8 +23,7 @@ use solana_transaction::Transaction;
 use solana_transaction_error::TransactionError;
 
 pub const STARTING_LAMPORTS: u64 = 100_000_000_000;
-pub const SYSTEM_PROGRAM_ID: Pubkey =
-    anchor_lang::solana_program::system_program::ID;
+pub const SYSTEM_PROGRAM_ID: Pubkey = anchor_lang::solana_program::system_program::ID;
 
 /// Anchor maps `#[error_code]` variants to `InstructionError::Custom(6000 + index)`.
 /// The backend matches errors by name, so reject-path tests must verify the
@@ -343,14 +344,12 @@ pub fn add_to_whitelist_instruction(
     label: [u8; 32],
     entry_type: u8,
     ttl_expires_at: i64,
-    approved_amount: u64,
 ) -> Instruction {
     let data = enclz::instruction::AddToWhitelist {
         target_address,
         label,
         entry_type,
         ttl_expires_at,
-        approved_amount,
     }
     .data();
     Instruction {
@@ -372,12 +371,10 @@ pub fn renew_whitelist_instruction(
     whitelist_entry: &Pubkey,
     target_address: Pubkey,
     ttl_expires_at: i64,
-    approved_amount: u64,
 ) -> Instruction {
     let data = enclz::instruction::RenewWhitelistEntry {
         target_address,
         ttl_expires_at,
-        approved_amount,
     }
     .data();
     Instruction {

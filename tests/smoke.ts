@@ -13,11 +13,11 @@
  *   3. pre-create protocol_fee_wallet ATA via getOrCreateAssociatedTokenAccount
  *   4. initialize_group (creates DEX-router type-2 entry atomically)
  *   5. add_agent with hourly_tx_cap=10 (so the 6th transfer hits WhitelistViolation, not HourlyCapExceeded)
- *   6. add_to_whitelist for an external merchant ($5 cap, ttl=now+3600)
+ *   6. add_to_whitelist for an external merchant (ttl=now+3600)
  *   7. mint 10 USDC into agent ATA
- *   8. execute 5 × $1 execute_transfer; assert each succeeds and amount_used grows
- *   9. assert WhitelistEntry PDA closed after 5th transfer
- *  10. attempt a 6th transfer to the same merchant — assert it reverts
+ *   8. execute an execute_transfer to the merchant; assert it succeeds
+ *   9. assert merchant received exactly the transferred amount
+ *  10. execute a transfer to a non-whitelisted address; assert it reverts
  *  11. attempt a stale-nonce transfer — assert NonceMismatch
  */
 
@@ -278,8 +278,7 @@ async function main(): Promise<void> {
       merchantOwner.publicKey,
       padDisplayName("acme-merchant"),
       ENTRY_TYPE_EXTERNAL,
-      new BN(ttl),
-      new BN(5_000_000)
+      new BN(ttl)
     )
     .accounts({
       owner: owner.publicKey,
@@ -396,8 +395,7 @@ async function main(): Promise<void> {
       merchant2Owner.publicKey,
       padDisplayName("acme-merchant-2"),
       ENTRY_TYPE_EXTERNAL,
-      new BN(Math.floor(Date.now() / 1000) + 3600),
-      new BN(5_000_000)
+      new BN(Math.floor(Date.now() / 1000) + 3600)
     )
     .accounts({
       owner: owner.publicKey,

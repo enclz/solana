@@ -146,27 +146,18 @@ pub fn handle_execute_transfer(
 
     // Step 7: whitelist PDA existence is enforced by Anchor's seed constraint —
     // a missing PDA fails account resolution before the handler runs.
-    // Step 8: type-1 (external recipient) extra checks.
-    let entry_type_value = context.accounts.whitelist_entry.entry_type;
-    let mut should_void = false;
-    if entry_type_value == entry_type::EXTERNAL {
-        let entry = &context.accounts.whitelist_entry;
-        require!(now <= entry.ttl_expires_at, EnclzError::WhitelistExpired);
-        let projected_used = entry
-            .amount_used
-            .checked_add(amount)
-            .ok_or(EnclzError::InvalidAmount)?;
+    // Step 8: type-1 (external recipient) TTL check.
+    if context.accounts.whitelist_entry.entry_type == entry_type::EXTERNAL {
         require!(
-            projected_used <= entry.approved_amount,
-            EnclzError::WhitelistAmountExhausted
+            now <= context.accounts.whitelist_entry.ttl_expires_at,
+            EnclzError::WhitelistExpired
         );
-        should_void = projected_used >= entry.approved_amount;
     }
 
-    // Step 9: fee math (additive — fee is added on top of amount).
+    // Step 10: fee math (additive — fee is added on top of amount).
     let (_total, fee) = compute_fee(amount)?;
 
-    // Step 10: two SPL `token::transfer` CPIs signed by the agent_wallet PDA.
+    // Step 9: two SPL `token::transfer` CPIs signed by the agent_wallet PDA.
     // The recipient receives exactly `amount`; the fee is sent to the protocol
     // fee wallet. Total drained from the agent = amount + fee = total.
     let group_key = context.accounts.group_config.key();
@@ -195,7 +186,10 @@ pub fn handle_execute_transfer(
     if fee > 0 {
         let cpi_accounts = Transfer {
             from: context.accounts.from_token_account.to_account_info(),
-            to: context.accounts.protocol_fee_token_account.to_account_info(),
+            to: context
+                .accounts
+                .protocol_fee_token_account
+                .to_account_info(),
             authority: agent_wallet.to_account_info(),
         };
         let cpi_context = CpiContext::new_with_signer(
@@ -213,22 +207,6 @@ pub fn handle_execute_transfer(
         .tx_count_this_hour
         .checked_add(1)
         .ok_or(EnclzError::InvalidAmount)?;
-
-    // Step 12: external entries consume the approved cap; auto-void on exhaustion.
-    if entry_type_value == entry_type::EXTERNAL {
-        let entry = &mut context.accounts.whitelist_entry;
-        entry.amount_used = entry
-            .amount_used
-            .checked_add(amount)
-            .ok_or(EnclzError::InvalidAmount)?;
-
-        if should_void {
-            context
-                .accounts
-                .whitelist_entry
-                .close(context.accounts.group_owner.to_account_info())?;
-        }
-    }
 
     Ok(())
 }

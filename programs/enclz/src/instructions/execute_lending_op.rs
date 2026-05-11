@@ -146,7 +146,10 @@ pub fn handle_execute_lending_op<'info>(
         if fee > 0 {
             let cpi_accounts = Transfer {
                 from: context.accounts.agent_token_account.to_account_info(),
-                to: context.accounts.protocol_fee_token_account.to_account_info(),
+                to: context
+                    .accounts
+                    .protocol_fee_token_account
+                    .to_account_info(),
                 authority: agent_wallet.to_account_info(),
             };
             let cpi_context = CpiContext::new_with_signer(
@@ -187,7 +190,10 @@ pub fn handle_execute_lending_op<'info>(
         if fee > 0 {
             let cpi_accounts = Transfer {
                 from: context.accounts.agent_token_account.to_account_info(),
-                to: context.accounts.protocol_fee_token_account.to_account_info(),
+                to: context
+                    .accounts
+                    .protocol_fee_token_account
+                    .to_account_info(),
                 authority: agent_wallet.to_account_info(),
             };
             let cpi_context = CpiContext::new_with_signer(
