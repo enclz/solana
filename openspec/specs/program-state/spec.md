@@ -41,7 +41,7 @@ The program SHALL define an `AgentWallet` account derived from seeds `["wallet",
 
 ### Requirement: WhitelistEntry PDA
 
-The program SHALL define a `WhitelistEntry` account derived from seeds `["whitelist", group_pubkey, target_address]` containing label, added_by pubkey, `entry_type: u8` (0=intra, 1=external, 2=protocol), `ttl_expires_at: i64`, `approved_amount: u64`, `amount_used: u64`, and a `bump: u8` storing the canonical PDA bump.
+The program SHALL define a `WhitelistEntry` account derived from seeds `["whitelist", group_pubkey, target_address]` containing `label: [u8; 32]`, `target: Pubkey`, `added_by: Pubkey`, `entry_type: u8` (0=intra, 1=external, 2=protocol), `ttl_expires_at: i64`, and a `bump: u8` storing the canonical PDA bump.
 
 #### Scenario: PDA derivation matches spec
 - **WHEN** test derives `[b"whitelist", group.as_ref(), target.as_ref()]`
@@ -51,9 +51,13 @@ The program SHALL define a `WhitelistEntry` account derived from seeds `["whitel
 - **WHEN** test reads the `entry_type` constants
 - **THEN** `INTRA_GROUP == 0`, `EXTERNAL == 1`, `PROTOCOL == 2`
 
+#### Scenario: INIT_SPACE accommodates remaining fields
+- **WHEN** test reads `WhitelistEntry::INIT_SPACE`
+- **THEN** the value equals `32 (label) + 32 (target) + 32 (added_by) + 1 (entry_type) + 8 (ttl_expires_at) + 1 (bump) = 106`
+
 ### Requirement: Error enum mirrors backend codes
 
-The program SHALL define error variants whose names map 1:1 to backend REST error codes: `WhitelistViolation`, `WhitelistExpired`, `WhitelistAmountExhausted`, `DailyLimitExceeded`, `PerTxLimitExceeded`, `HourlyCapExceeded`, `NonceMismatch`, `Unauthorized`, `InvalidAmount`, `InvalidTtl`. `InvalidAddress` SHALL NOT be defined — `Pubkey` type enforcement makes it unreachable on-chain.
+The program SHALL define error variants whose names map 1:1 to backend REST error codes: `WhitelistViolation`, `WhitelistExpired`, `WhitelistAmountExhausted`, `DailyLimitExceeded`, `PerTxLimitExceeded`, `HourlyCapExceeded`, `NonceMismatch`, `Unauthorized`, `InvalidAmount`, `InvalidTtl`. `InvalidAddress` SHALL NOT be defined — `Pubkey` type enforcement makes it unreachable on-chain. `WhitelistAmountExhausted` is retained as a tombstone variant to preserve error code stability but is never emitted.
 
 #### Scenario: All required error variants exist
 - **WHEN** test enumerates `EnclzError` variants
@@ -74,4 +78,3 @@ The program SHALL expose seed-prefix constants (`GROUP_SEED`, `WALLET_SEED`, `WH
 #### Scenario: Constants match spec values
 - **WHEN** test reads the constant values
 - **THEN** seeds equal `b"group"` / `b"wallet"` / `b"whitelist"` and limits equal documented defaults
-

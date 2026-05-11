@@ -1,13 +1,13 @@
 # transfer-execution Specification
 
 ## Purpose
-execute_transfer instruction — enforced transfer of the bound SPL token from an agent wallet to a whitelisted recipient. Handles nonce-based replay protection, spend-limit checks, whitelist entry validation, protocol fee deduction, and optional auto-void of capped external entries.
+execute_transfer instruction — enforced transfer of the bound SPL token from an agent wallet to a whitelisted recipient. Handles nonce-based replay protection, spend-limit checks, whitelist entry validation, and protocol fee deduction.
 ## Requirements
 ### Requirement: execute_transfer instruction signature and account constraints
 
 The program SHALL expose `execute_transfer(amount: u64, expected_nonce: u64, agent_index: u8)` callable only by the `backend_operator` recorded on the agent's `GroupConfig`. The `agent_index` parameter reconstructs the `agent_wallet` PDA seed for the SPL token CPI signer; instruction args remain (`amount`, `expected_nonce`) plus this implementation-required index.
 
-Required accounts: `backend_operator` (signer), `group_config`, `group_owner` (writable, address-bound to `group_config.owner` — receives auto-void rent), `agent_wallet` (writable), `from_token_account` (writable, owner == agent_wallet PDA, **mint == `agent_wallet.mint`**), `recipient_wallet` (unchecked, pubkey constrained != protocol_fee_wallet and != agent_wallet PDA), `to_token_account` (writable, init_if_needed via ATA with `recipient_wallet` as authority, **mint == `agent_wallet.mint`**), `whitelist_entry` (seeds derived from `recipient_wallet.key()`), `protocol_fee_token_account` (writable, owner == `group_config.protocol_fee_wallet`, **mint == `agent_wallet.mint`**), `mint` (account matching `agent_wallet.mint`), `token_program`, `associated_token_program`, `system_program`. Mint binding is enforced absolutely against the mint that the agent was provisioned with at `add_agent` time, not via cross-leg parity — the operator cannot select the operating mint at transfer time.
+Required accounts: `backend_operator` (signer), `group_config`, `group_owner` (writable, address-bound to `group_config.owner`), `agent_wallet` (writable), `from_token_account` (writable, owner == agent_wallet PDA, **mint == `agent_wallet.mint`**), `recipient_wallet` (unchecked, pubkey constrained != protocol_fee_wallet and != agent_wallet PDA), `to_token_account` (writable, init_if_needed via ATA with `recipient_wallet` as authority, **mint == `agent_wallet.mint`**), `whitelist_entry` (seeds derived from `recipient_wallet.key()`), `protocol_fee_token_account` (writable, owner == `group_config.protocol_fee_wallet`, **mint == `agent_wallet.mint`**), `mint` (account matching `agent_wallet.mint`), `token_program`, `associated_token_program`, `system_program`. Mint binding is enforced absolutely against the mint that the agent was provisioned with at `add_agent` time, not via cross-leg parity — the operator cannot select the operating mint at transfer time.
 
 #### Scenario: Non-operator signer rejected
 - **WHEN** any signer other than `GroupConfig.backend_operator` invokes `execute_transfer`
@@ -98,19 +98,11 @@ The instruction SHALL reject the transfer with the spec-mandated error variant w
 
 ### Requirement: Whitelist enforcement
 
-The instruction SHALL require that the supplied `whitelist_entry` PDA matches seeds `["whitelist", group_config, recipient_wallet.key()]` and exists. The seed is derived from `recipient_wallet.key()` (not from `to_token_account.owner`, since the ATA may be uninitialized at resolution time) — so it is impossible to pair a valid whitelist PDA with an unwhitelisted destination. For `entry_type == 1` it SHALL additionally enforce TTL and amount-cap.
+The instruction SHALL require that the supplied `whitelist_entry` PDA matches seeds `["whitelist", group_config, recipient_wallet.key()]` and exists. The seed is derived from `recipient_wallet.key()` (not from `to_token_account.owner`, since the ATA may be uninitialized at resolution time) — so it is impossible to pair a valid whitelist PDA with an unwhitelisted destination.
 
 #### Scenario: Recipient not whitelisted
 - **WHEN** no `WhitelistEntry` PDA exists for the recipient address
 - **THEN** Anchor's typed account constraint rejects the transaction with `AccountNotInitialized` (3012) during account resolution, before the handler runs; the backend translates this to `whitelist_violation` for the REST response
-
-#### Scenario: External entry expired
-- **WHEN** `entry_type == 1` and `now > ttl_expires_at`
-- **THEN** the call fails with `WhitelistExpired`
-
-#### Scenario: External entry amount exhausted
-- **WHEN** `entry_type == 1` and `amount_used + amount > approved_amount`
-- **THEN** the call fails with `WhitelistAmountExhausted`
 
 #### Scenario: Intra-group transfer always allowed within spend limits
 - **WHEN** `entry_type == 0` and all spend-limit checks pass
@@ -119,6 +111,26 @@ The instruction SHALL require that the supplied `whitelist_entry` PDA matches se
 #### Scenario: Protocol entry always allowed within spend limits
 - **WHEN** `entry_type == 2` and all spend-limit checks pass
 - **THEN** the transfer succeeds regardless of TTL or amount fields
+
+### Requirement: Whitelist enforcement for EXTERNAL recipients
+
+For `entry_type == 1` (EXTERNAL), the program SHALL enforce TTL expiry: the current clock timestamp MUST be less than or equal to `whitelist_entry.ttl_expires_at`. No per-recipient spending cap is enforced — the agent's own limits (`daily_limit`, `per_tx_limit`, `hourly_tx_cap`) are the sole spending constraints.
+
+#### Scenario: Transfer succeeds within TTL
+- **WHEN** backend operator calls `execute_transfer` to an EXTERNAL recipient with a whitelist entry where `ttl_expires_at >= now`
+- **THEN** the transfer succeeds (subject to agent-level limits)
+
+#### Scenario: Transfer fails when TTL expired
+- **WHEN** backend operator calls `execute_transfer` to an EXTERNAL recipient with a whitelist entry where `ttl_expires_at < now`
+- **THEN** the call fails with `WhitelistExpired`
+
+#### Scenario: Transfer fails when whitelist entry missing
+- **WHEN** backend operator calls `execute_transfer` to a recipient address with no `WhitelistEntry` PDA
+- **THEN** Anchor account resolution fails (PDA not found), surfacing as `WhitelistViolation`
+
+#### Scenario: Transfer to EXTERNAL recipient succeeds regardless of transfer count
+- **WHEN** backend operator calls `execute_transfer` multiple times to the same EXTERNAL recipient, all within TTL
+- **THEN** each transfer succeeds independently, bounded only by agent-level limits
 
 ### Requirement: Protocol fee deduction
 
@@ -136,9 +148,9 @@ The instruction SHALL compute `protocol_fee = ceil(amount * 10 / 10_000)` using 
 - **WHEN** the fee leg fails (e.g., fee ATA missing)
 - **THEN** the entire transaction reverts and the net leg is rolled back
 
-### Requirement: Counter and consumption updates after successful transfer
+### Requirement: Counter updates after successful transfer
 
-The instruction SHALL increment `spent_today` by the gross `amount` (not `net`) and `tx_count_this_hour` by 1. For `entry_type == 1` it SHALL also increment `whitelist_entry.amount_used` by `amount`.
+The instruction SHALL increment `spent_today` by the gross `amount` (not `net`) and `tx_count_this_hour` by 1.
 
 #### Scenario: Spent_today counts gross
 - **WHEN** a transfer of `amount = 1_000_000` succeeds
@@ -147,22 +159,6 @@ The instruction SHALL increment `spent_today` by the gross `amount` (not `net`) 
 #### Scenario: Hourly counter increments
 - **WHEN** a transfer succeeds
 - **THEN** `tx_count_this_hour` increases by exactly 1
-
-#### Scenario: Amount used incremented for external entry
-- **WHEN** a transfer to an `entry_type == 1` recipient succeeds
-- **THEN** `whitelist_entry.amount_used` increases by `amount`
-
-### Requirement: Auto-void on whitelist exhaustion
-
-When a successful transfer causes `entry_type == 1` `amount_used >= approved_amount`, the instruction SHALL close the `WhitelistEntry` PDA and return rent lamports to the group owner.
-
-#### Scenario: Exact exhaustion closes entry
-- **WHEN** a transfer brings `amount_used` to exactly `approved_amount`
-- **THEN** the `WhitelistEntry` PDA is closed and lamports return to the orchestrator
-
-#### Scenario: Subsequent transfer fails as whitelist_violation, not amount_exhausted
-- **WHEN** an agent attempts another transfer to the same address after auto-void
-- **THEN** the call fails with `WhitelistViolation` (not `WhitelistAmountExhausted`) because the PDA no longer exists
 
 ### Requirement: Checked arithmetic
 
